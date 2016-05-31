@@ -1,7 +1,16 @@
+# Set-up:
+
+library(RCurl)
+library(dplyr)
+library(tidyr)
+
 # Read sites for study:
 
-catSites <- read.csv('catSites.csv',
-                     stringsAsFactors = FALSE) %>%
+gitURL <- getURL(
+  'https://raw.githubusercontent.com/bsevansunc/birdCats/master/birdCats/catSites.csv'
+)
+
+catSites <- read.csv(text = gitURL, stringsAsFactors = FALSE) %>%
   tbl_df %>%
   .$site
 

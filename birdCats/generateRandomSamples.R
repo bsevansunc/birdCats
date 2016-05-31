@@ -10,52 +10,52 @@ gitURL <- getURL(
   'https://raw.githubusercontent.com/bsevansunc/birdCats/master/birdCats/catSites.csv'
 )
 
+# Get sites:
+
 catSites <- read.csv(text = gitURL, stringsAsFactors = FALSE) %>%
   tbl_df %>%
   .$site
 
-# Function generates a random sampling schedule for sites, returns data frame
+# Generate site data frame, with no week 4 to week 1 transitions:
 
-temporalSamplingFun <- function(){
-  dfList <- vector('list', length = 3)
-  for(i in 1:3){
-    dfList[[i]] <- data.frame(
-      site = catSites,
-      monthSample = rep(i, 52),
-      eventSample = sample(1:52, 52)
-    ) 
+t1 <- data.frame(site = rep(catSites,3)) %>%
+  arrange(site) %>%
+  mutate(month = rep(1:3, length(unique(site)))) %>%
+  group_by(site, month) %>%
+  mutate(
+    week = sample(1:4, 1),
+    week = ifelse(lead(week) == 4 & !is.na(lead(week)),
+                  sample(2:4, 1), week)
+  ) %>%
+  ungroup %>%
+  arrange(month, week)
+
+# Make a data frame of sample events by week
+
+t1List <- vector('list', length = 3)
+
+for(i in 1:3){
+  t1Month <- t1 %>%
+    filter(month == i)
+  weekList <- vector('list', length = length(unique(t1Month$week)))
+  for(j in 1:length(weekList)){
+    t1Week <- filter(t1Month, week == j)
+    t1Week$event <- sample(1:nrow(t1Week), nrow(t1Week))
+    weekList[[j]] <- t1Week
   }
-  df <- do.call('rbind', dfList) %>% 
-    tbl_df %>% 
-    arrange(monthSample, eventSample) %>%
-    mutate(eventWk =  reshape::round_any(eventSample/13, 1, ceiling)) %>%
-    select(site, monthSample, eventWk, eventSample)
-  return(df)
+  t1List[[i]] <- bind_rows(weekList)
 }
 
+# modify the sample events to represent sample event order within a given month rather than events within a week:
 
-dfList = vector('list', length = 10000)
+t1Frame <- bind_rows(t1List) %>%
+  arrange(month, week, event) %>%
+  group_by(month) %>%
+  mutate(sOrder = 1:52) %>%
+  select(site, month, sOrder)
 
-# For loop checks whether sites are visited on the 4th then 1st week. If this is the case, it returns NULL, if this is not the case, it returns the randomly sampled data frame:
+# View the frame:
 
-for(i in 1:10000){
-  df <- temporalSamplingFun()
-  if(nrow(
-    df %>%
-    group_by(site) %>%
-    mutate(t1 = eventWk == 4 & lead(eventWk == 1)) %>%
-    filter(t1 == TRUE)
-  ) < 1) {
-    dfList[[i]] <- df %>%
-      mutate(iteration = i)
-  } else {
-    dfList[[i]] <- NULL
-    }
-}
-
-# Binds elements in the rows together into a single data frame then selects the first iteration that matches the 4 to 1 condition.
-
-randomizedSamples <- bind_rows(dfList) %>%
-  filter(iteration == min(iteration))
+View(t1Frame)
 
 

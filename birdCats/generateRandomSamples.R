@@ -1,7 +1,11 @@
+# Read sites for study:
+
 catSites <- read.csv('catSites.csv',
                      stringsAsFactors = FALSE) %>%
   tbl_df %>%
   .$site
+
+# Function generates a random sampling schedule for sites, returns data frame
 
 temporalSamplingFun <- function(){
   dfList <- vector('list', length = 3)
@@ -21,31 +25,9 @@ temporalSamplingFun <- function(){
 }
 
 
-test1 <- df %>%
-  group_by(site) %>%
-  mutate(t1 = eventWk == 4 & lead(eventWk == 1)) %>%
-  filter(t1 == TRUE)
+dfList = vector('list', length = 10000)
 
-
-
-
-test2 <- temporalSamplingFun() %>%
-  group_by(site) %>%
-  mutate(t1 = eventWk == 4 & lead(eventWk == 1)) %>%
-  filter(t1 == TRUE)
-
-nrowVector = numeric()
-
-for(i in 1:10000){
-  nrowVector[i] <- nrow(
-    temporalSamplingFun() %>%
-    group_by(site) %>%
-    mutate(t1 = eventWk == 4 & lead(eventWk == 1)) %>%
-    filter(t1 == TRUE)
-  )
-}
-
-dfList = list()
+# For loop checks whether sites are visited on the 4th then 1st week. If this is the case, it returns NULL, if this is not the case, it returns the randomly sampled data frame:
 
 for(i in 1:10000){
   df <- temporalSamplingFun()
@@ -62,6 +44,9 @@ for(i in 1:10000){
     }
 }
 
-randomizedSamples <- bind_rows(dfList)
+# Binds elements in the rows together into a single data frame then selects the first iteration that matches the 4 to 1 condition.
+
+randomizedSamples <- bind_rows(dfList) %>%
+  filter(iteration == min(iteration))
 
 

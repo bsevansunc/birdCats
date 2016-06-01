@@ -22,13 +22,24 @@ t1 <- data.frame(site = rep(catSites,3)) %>%
   arrange(site) %>%
   mutate(month = rep(1:3, length(unique(site)))) %>%
   group_by(site, month) %>%
-  mutate(
-    week = sample(1:4, 1),
-    week = ifelse(lead(week) == 4 & !is.na(lead(week)),
-                  sample(2:4, 1), week)
-  ) %>%
+  mutate(week = sample(1:4, 1)) %>%
   ungroup %>%
-  arrange(month, week)
+  arrange(site) 
+
+tList <- vector('list', length(catSites))
+
+for(i in 1:length(tList)){
+  siteItem <- filter(t1, site == catSites[[i]]) %>%
+    arrange(month)
+  for(j in 2:3){
+    if(siteItem[j,3] == 1 & siteItem[j-1,3] == 4){
+      siteItem[j, 3] <- sample(2:4, 1)
+    }
+  }
+  tList[[i]] <- siteItem
+}
+
+t1 <- bind_rows(tList)
 
 # Make a data frame of sample events by week
 
@@ -51,7 +62,7 @@ for(i in 1:3){
 t1Frame <- bind_rows(t1List) %>%
   arrange(month, week, event) %>%
   group_by(month) %>%
-  mutate(sOrder = 1:52) %>%
+  mutate(sOrder = 1:52) %>% View
   select(site, month, sOrder)
 
 # View the frame:

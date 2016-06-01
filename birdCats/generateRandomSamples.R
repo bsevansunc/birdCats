@@ -1,5 +1,7 @@
 # Set-up:
 
+# Working directory, Brian office: C:/Users/Brian/Desktop/gits/birdCats
+
 library(RCurl)
 library(dplyr)
 library(tidyr)

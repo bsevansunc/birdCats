@@ -16,84 +16,56 @@ catSites <- read.csv(text = gitURL, stringsAsFactors = FALSE) %>%
   tbl_df %>%
   .$site
 
-# Generate site data frame, with no week 4 to week 1 transitions:
+# Cat frame with month (1:3) and sample order (1:52, per month):
 
-t1 <- data.frame(site = rep(catSites,3)) %>%
-  arrange(site) %>%
-  # For each site, assign sample months 1,2,3:
-  mutate(month = rep(1:3, length(unique(site)))) %>%
-  # Grouping operation allows us to sample within site and month:
-  group_by(site, month) %>%
-  # Add a random "week" sample of 1-4:
-  mutate(week = sample(1:4, 1)) %>%
-  # Bookkeeping for better visualization
-  ungroup %>%
-  arrange(site) 
 
-# Empty list, with 1 list item per site in which to store data:
-tList <- vector('list', length(catSites))
+catFrame <- data.frame(month = rep(1:3, each = length(unique(catSites))),
+           sampleOrder = rep(1:52,  3),
+           site = NA) %>%
+  tbl_df
 
-# For each site ...
-for(i in 1:length(tList)){
-  # Data frame of one site, arranged by month:
-  siteItem <- filter(t1, site == catSites[[i]]) %>%
-    arrange(month)
-  # For each month sample except the first  ...
-  for(j in 2:3){
-    # If the sample week is 1 and the previous week is 4, resample from 2:4
-    if(siteItem[j,3] == 1 & siteItem[j-1,3] == 4){
-      siteItem[j, 3] <- sample(2:4, 1)
-    }
-  }
-  # Output list:
-  tList[[i]] <- siteItem
-}
+# Sites for month 1 are a random sample of catSites:
 
-# Bind the fixed list back into a data frame:
+catFrame[1:52,'site'] <- sample(catSites, 52)
 
-t1 <- bind_rows(tList)
+# Get vector of the last 13 cat sites in month 1:
 
-# Make an empty list of sample events by month:
+endCats1 <- catFrame %>%
+  filter(month == 1, sampleOrder >= 40) %>%
+  .$site
 
-t1List <- vector('list', length = 3)
+# Generate random sample of sites for first 13 sites in month 2 that does not include endCats1
 
-# For each month ...
+catFrame[53:65,'site'] <- sample(
+  catSites[!catSites %in% endCats1], 13
+)
 
-for(i in 1:3){
-  # Filter frame to that month
-  t1Month <- t1 %>%
-    filter(month == i)
-  # Get a vector of "weeks" within that month:
-  weekList <- vector('list', length = length(unique(t1Month$week)))
-  # For each week in month ...
-  for(j in 1:length(weekList)){
-    # Filter frame to that week:
-    t1Week <- filter(t1Month, week == j)
-    # Add ordered sample events within that week:
-    t1Week$event <- sample(1:nrow(t1Week), nrow(t1Week))
-    # Output as list item within month:
-    weekList[[j]] <- t1Week
-  }
-  # Bind week lists into 3 data frames that sit in the month list:
-  t1List[[i]] <- bind_rows(weekList)
-}
+# For remaining sites in month 2, select from vector of sites that do not include the first 13 records of this month:
 
-# Modify the sample events to represent sample event order within a given month rather than events within a week:
+catFrame[66:104,'site'] <- sample(
+  catSites[!catSites %in% catFrame[53:65,]$site], 39 
+)
 
-t1Frame <- bind_rows(t1List) %>%
-  arrange(month, week, event) %>%
-  group_by(month) %>%
-  mutate(sOrder = 1:52)
-  
+# Get vector of the last 13 cat sites in month 2:
 
-# View the frame to double-check whether there are 4-1 records for a given site:
+endCats2 <- catFrame %>%
+  filter(month == 2, sampleOrder >= 40) %>%
+  .$site
 
-View(t1Frame)
+# Generate random sample of sites for first 13 sites in month 3 that does not include endCats2
 
-# Remove unnecessary columns:
+catFrame[105:117,'site'] <- sample(
+  catSites[!catSites %in% endCats2], 13
+)
 
-sampleOutput <- t1Frame %>%
-  select(site, month, sOrder)
-  
+# For remaining sites in month 3, select from vector of sites that do not include the first 13 records of this month:
+
+catFrame[118:nrow(catFrame),'site'] <- sample(
+  catSites[!catSites %in% catFrame[105:117,]$site], 39 
+)
+
+# Write file:
+
+write.csv(catFrame, 'samplingOrder.csv', row.names = FALSE)
 
 

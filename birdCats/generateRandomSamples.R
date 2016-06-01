@@ -62,7 +62,7 @@ for(i in 1:3){
 t1Frame <- bind_rows(t1List) %>%
   arrange(month, week, event) %>%
   group_by(month) %>%
-  mutate(sOrder = 1:52) %>% View
+  mutate(sOrder = 1:52)
   select(site, month, sOrder)
 
 # View the frame:

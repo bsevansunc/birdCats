@@ -1,4 +1,4 @@
-setwd("C:/Users/Kevin/Documents/gitHub/birdCats/birdCats")
+# Working directory, Kevin's laptop: C:/Users/Kevin/Documents/gitHub/birdCats/birdCats
 
 siteInformation <- read.csv('samplingOrder.csv')
 

@@ -69,6 +69,6 @@ catFrame[121:nrow(catFrame),'site'] <- sample(
 
 # Write file:
 
-write.csv(catFrame, 'samplingOrder2.csv', row.names = FALSE)
+write.csv(catFrame, 'samplingOrder.csv', row.names = FALSE)
 
 

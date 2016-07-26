@@ -1,59 +1,76 @@
+# =================================================================================*
+# ---- SET-UP ----
+# =================================================================================*
+
 library(tigris)
 library(acs)
 library(stringr) # to pad fips codes
 library(leaflet)
 library(rgdal)
+library(dplyr)
+library(sp)
+
+options(stringsAsFactors = FALSE)
+
+# =================================================================================*
+# ---- GET CENSUS DATA ----
+# =================================================================================*
+
+# Add api key for census data:
 
 api.key.install(key = 'ec7729865a6a6bdf5d1ce20999a4788da99b6c5e')
 
-
-
+# Get census tracts for each state:
 
 tractsMD <- tracts(state = 'MD')
 tractsVA <- tracts(state = 'VA')
 tractsDC <- tracts(state = 'DC')
 
+# Bind census tracts into a single file:
+
 tractsAll <- rbind_tigris(tractsMD, tractsVA, tractsDC)
+
+# Take a look:
 
 leaflet(tractsAll) %>%
   addTiles() %>%
   addPolygons(popup = ~NAME)
 
+# Make into a spatial file of each county and tract:
+
 geo <- geo.make(state = c('DC', 'VA', 'MD'), county = '*', tract = '*')
+
+# Fetch census data for tracts:
 
 income <- acs.fetch(endyear = 2012, span = 5, geography = geo,
                   table.number = "B19001", col.names = "pretty")
 
-income1 <- acs.fetch(endyear = 2012, span = 5, geography = geo,
-                  table.number = "B19013", col.names = "pretty")
+# Make into a data frame:
 
-names(attributes(income))
+income_df <- data.frame(
+  GEOID = paste0(str_pad(income@geography$state, 2, "left", pad="0"),
+                 str_pad(income@geography$county, 3, "left", pad="0"),
+                 str_pad(income@geography$tract, 6, "left", pad="0")),
+  medianIncome = as.numeric(income1@estimate)
+  )
 
-income_df <- data.frame(paste0(str_pad(income@geography$state, 2, "left", pad="0"), 
-                               str_pad(income@geography$county, 3, "left", pad="0"), 
-                               str_pad(income@geography$tract, 6, "left", pad="0")),
-                        as.numeric(income1@estimate),
-#                         income@estimate[,c("Household Income: Total:",
-#                                            "Household Income: $200,000 or more")], 
-                        stringsAsFactors = FALSE)
-# 
-# income_df <- select(income_df, 1:3)
-# rownames(income_df)<-1:nrow(income_df)
-# names(income_df)<-c("GEOID", "total", "over_200")
-# income_df$percent <- 100*(income_df$over_200/income_df$total)
-
-names(income_df) <- c('GEOID', 'medianIncome')
+# Merge census data with geographic dataset:
 
 income_merged<- geo_join(tractsAll, income_df, "GEOID", "GEOID")
-# there are some tracts with no land that we should exclude
-income_merged <- income_merged[income_merged$ALAND>0,]
+
+# ---------------------------------------------------------------------------------*
+# ---- Plot census data ----
+# ---------------------------------------------------------------------------------*
+
+# Popup:
 
 popup <- paste0("GEOID: ", income_merged$GEOID, "<br>", "Median household income: ")
-# popup <- paste0("GEOID: ", income_merged$GEOID, "<br>", "Percent of Households above $200k: ", round(income_merged$percent,2))
+
+# Color palette:
+
 pal <- colorNumeric(
   palette = "YlGnBu",
   domain = income_merged$medianIncome
-  # domain = income_merged$percent
 )
 
 map3<-leaflet() %>%
@@ -75,11 +92,19 @@ map3<-leaflet() %>%
             labFormat = labelFormat(prefix = "")) 
 map3
 
-# Add to census data to cat sampling points
+# =================================================================================*
+# ---- CENSUS DATA AT CAT SAMPLING POINTS ----
+# =================================================================================*
+
+# Get nestwatch sampling coordinates (spatial coordinates are in UTM):
 
 lc100 <- read.csv('lc100.csv')
 
+# Project nestwatch data:
+
 utm <- SpatialPoints(cbind(lc100$X,lc100$Y), proj4string=CRS("+proj=utm +zone=18"))
+
+# Get a vector of cat sites:
 
 catSites <- read.csv('catDataCamera.csv') %>%
   tbl_df %>%
@@ -89,6 +114,8 @@ catSites <- read.csv('catDataCamera.csv') %>%
   arrange(SITE) %>%
   .$SITE
 
+# Transform sampling coordinates from UTM to lonlat and filter to cat sampling points:
+
 lonlat <- spTransform(utm, CRS('+proj=longlat')) %>%
   data.frame %>%
   dplyr::rename(lon = coords.x1, lat = coords.x2) %>%
@@ -96,14 +123,20 @@ lonlat <- spTransform(utm, CRS('+proj=longlat')) %>%
   select(site, can, imp, lon, lat) %>%
   filter(site %in% catSites)
 
+# Set the projection for the sampling coordinates:
+
 coordinates(lonlat) <- ~lon + lat
 proj4string(lonlat) <- proj4string(income_merged)
+
+# Extract the census data to the sampling coordinates:
 
 llData <- over(lonlat, income_merged) %>%
   cbind(lonlat@data) %>%
   tbl_df %>%
   select(site, GEOID, can, imp, medianIncome) %>%
   dplyr::rename(fips = GEOID)
+
+# Take a look:
 
 hist(llData$medianIncome)
   

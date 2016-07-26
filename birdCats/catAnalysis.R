@@ -3,7 +3,10 @@
 # =================================================================================*
 library(unmarked); library(dplyr); library(tidyr)
 
-setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/')
+# setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
+# setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B
+
+
 list.files()
 
 options(stringsAsFactors = F)
@@ -16,8 +19,9 @@ catCam <- read.csv('catDataCamera.csv') %>%
   tbl_df %>%
   filter(!is.na(CAT))
 
-catSites <- read.csv('catSites.csv') %>%
-  tbl_df
+catSites <- read.csv('catSiteData.csv') %>%
+  tbl_df %>%
+  select(site, imp)
 
 catTransect <- read.csv('catDataTransect.csv') %>%
   tbl_df %>%

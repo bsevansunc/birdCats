@@ -2,12 +2,11 @@ library(tigris)
 library(acs)
 library(stringr) # to pad fips codes
 library(leaflet)
+library(rgdal)
 
 api.key.install(key = 'ec7729865a6a6bdf5d1ce20999a4788da99b6c5e')
 
-countiesMD <- c(3,5,510, 31, 33)
-countiesVA <- c(600, 13, 510, 113, 179)
-countiesDC <- 11001
+
 
 
 tractsMD <- tracts(state = 'MD')
@@ -76,13 +75,38 @@ map3<-leaflet() %>%
             labFormat = labelFormat(prefix = "")) 
 map3
 
-latlong2fips <- function(latitude, longitude) {
-  url <- "http://data.fcc.gov/api/block/find?format=json&latitude=%f&longitude=%f"
-  url <- sprintf(url, latitude, longitude)
-  json <- RCurl::getURL(url)
-  json <- RJSONIO::fromJSON(json)
-  as.character(json$County['FIPS'])
-}
+# Add to census data to cat sampling points
+
+lc100 <- read.csv('lc100.csv')
+
+utm <- SpatialPoints(cbind(lc100$X,lc100$Y), proj4string=CRS("+proj=utm +zone=18"))
+
+catSites <- read.csv('catDataCamera.csv') %>%
+  tbl_df %>%
+  filter(!is.na(CAT)) %>%
+  select(SITE) %>%
+  distinct %>%
+  arrange(SITE) %>%
+  .$SITE
+
+lonlat <- spTransform(utm, CRS('+proj=longlat')) %>%
+  data.frame %>%
+  dplyr::rename(lon = coords.x1, lat = coords.x2) %>%
+  cbind(lc100) %>%
+  select(site, can, imp, lon, lat) %>%
+  filter(site %in% catSites)
+
+coordinates(lonlat) <- ~lon + lat
+proj4string(lonlat) <- proj4string(income_merged)
+
+llData <- over(lonlat, income_merged) %>%
+  cbind(lonlat@data) %>%
+  tbl_df %>%
+  select(site, GEOID, can, imp, medianIncome) %>%
+  dplyr::rename(fips = GEOID)
+
+hist(llData$medianIncome)
+  
 
 
 

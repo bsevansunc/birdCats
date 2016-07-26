@@ -41,6 +41,7 @@ leaflet(tractsAll) %>%
 geo <- geo.make(state = c('DC', 'VA', 'MD'), county = '*', tract = '*')
 
 # Fetch census data for tracts:
+# This example relates to median household income. For more variables see: http://www2.census.gov/geo/tiger/TIGER_DP/2014ACS/Metadata/BG_METADATA_2014.txt
 
 income <- acs.fetch(endyear = 2012, span = 5, geography = geo,
                   table.number = "B19001", col.names = "pretty")
@@ -139,8 +140,8 @@ llData <- over(lonlat, income_merged) %>%
 # Take a look:
 
 hist(llData$medianIncome)
-  
 
+# Write to file:
 
-
+write.csv(llData, 'llData.csv', row.names = FALSE)
 

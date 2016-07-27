@@ -133,8 +133,9 @@ proj4string(lonlat) <- proj4string(income_merged)
 
 llData <- over(lonlat, income_merged) %>%
   cbind(lonlat@data) %>%
+  cbind(lonlat@coords) %>%
   tbl_df %>%
-  select(site, GEOID, can, imp, medianIncome) %>%
+  select(site, lon, lat, GEOID, can, imp, medianIncome) %>%
   dplyr::rename(fips = GEOID)
 
 # Take a look:

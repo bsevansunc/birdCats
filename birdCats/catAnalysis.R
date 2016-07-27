@@ -20,7 +20,7 @@ catDataActivity <- read.csv('catDataActivity.csv') %>%
 
 catCam <- read.csv('catDataCamera.csv') %>%
   tbl_df %>%
-  filter(!is.na(SPECIES))
+  filter(!is.na(species))
 
 catSites <- read.csv('catSiteData.csv') %>%
   tbl_df %>%
@@ -28,7 +28,6 @@ catSites <- read.csv('catSiteData.csv') %>%
 
 catTransect <- read.csv('catDataTransect.csv') %>%
   tbl_df %>%
-  select(-X) %>%
   filter(!is.na(COUNT)) %>%
   left_join(catDataActivity %>%
               filter(ACTIVITY == 'Transect'),

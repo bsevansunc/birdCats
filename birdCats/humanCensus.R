@@ -122,7 +122,18 @@ lonlat <- spTransform(utm, CRS('+proj=longlat')) %>%
   dplyr::rename(lon = coords.x1, lat = coords.x2) %>%
   cbind(lc100) %>%
   select(site, can, imp, lon, lat) %>%
-  filter(site %in% catSites)
+  filter(site %in% catSites) %>%
+  bind_rows(
+    data.frame(
+      site = c('GERYERIMD1', 'MISSEDDC1', 'OBRICHRMD1',
+               'OLONMARDC1', 'WOLFAMYDC1', 'WOLFKARDC1'),
+      lon = c(-77.118616, -76.996958, -76.924433,
+              -77.083900, -77.043167,  -77.061800),
+      lat = c(38.999316, 38.883588,39.013183,
+              38.949000,38.918567, 38.941583)
+    )
+  ) %>%
+  data.frame
 
 # Set the projection for the sampling coordinates:
 

@@ -1,7 +1,7 @@
 # =================================================================================*
 # ---- SET-UP ----
 # =================================================================================*
-library(unmarked); library(dplyr); library(tidyr)
+library(unmarked); library(dplyr); library(tidyr); library(camtrapR)
 
 # setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
 # setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B
@@ -21,7 +21,8 @@ catSiteActivity <- read.csv('catDataActivity.csv') %>%
 
 catCam <- read.csv('catDataCamera.csv') %>%
   tbl_df %>%
-  filter(!is.na(species))
+  filter(!is.na(species)) %>%
+  filter(!is.na(cameraID))
 
 catSites <- read.csv('catSiteData.csv') %>%
   tbl_df %>%
@@ -79,4 +80,58 @@ umfWithCovs <- unmarkedFrameDS(
 
 umfWithCovs %>% summary
 
-# 
+
+
+# =================================================================================*
+# ---- CAMERA DATA ----
+# =================================================================================*
+
+
+
+# Playing around to see how recordTable() and detectionHistory() format things:
+
+
+# Creating a dataframe camtrapR will like for use in cameraOperation():
+#     Problem--need setup and retrieval dedicated cols
+
+
+cameraActivity <- catSiteActivity %>%
+                    filter(activity == "setup" | activity == "takedown")
+
+
+# Did not work:
+
+# camSetup <- cameraActivity %>%
+#               filter(activity == 'setup') %>%
+#               select(site, date)
+
+# camTakedown <- cameraActivity %>%
+#                 filter(activity == 'takedown') %>%
+#                 select(site, date)
+
+# camReady <- left_join(camSetup, 
+#                       camTakedown,
+#                       by = 'site'
+#                       )
+ 
+
+
+data(recordTableSample)
+
+view(recordTableSample)
+
+
+# Not ready yet:
+
+# cameraOperation(cameraActivity,
+#                 stationCol = "site",
+#                 setupCol = "")
+
+
+# Not ready yet:
+
+# detectionHistory(recordTableSample,
+#                  species = "PBE",
+#                  )
+
+

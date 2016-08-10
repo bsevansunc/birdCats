@@ -26,10 +26,11 @@ catCam <- read.csv('catDataCamera.csv') %>%
 
 catSites <- read.csv('catSiteData.csv') %>%
   tbl_df %>%
-  select(site, imp)
+  select(site)
 
 catTransect <- read.csv('catDataTransect.csv') %>%
   tbl_df %>%
+  mutate(site = ifelse(site == 'OBRICHMD1', 'OBRICHRMD1', site)) %>%
   filter(!is.na(count)) %>%
   filter(species == 'cat') %>%
   left_join(catSiteActivity %>%
@@ -39,6 +40,11 @@ catTransect <- read.csv('catDataTransect.csv') %>%
   # filter(!is.na(distance)) %>%
   mutate(distance = as.numeric(distance),
          visit = as.factor(visit)) %>%
+  arrange(site)
+
+covs <- read.csv('covariateData.csv') %>%
+  tbl_df %>%
+  mutate(site = ifelse(site == 'OBRICHMD1', 'OBRICHRMD1', site)) %>%
   arrange(site)
 
 catIncidental <- read.csv('catDataIncidental.csv') %>%
@@ -59,11 +65,9 @@ catTransectUmf <- formatDistData(
   # occasionCol = 'visit'
   )
 
-covs <- left_join(
+covs_df <- left_join(
   catTransect,
-  read.csv('llData.csv') %>%
-    tbl_df %>%
-    arrange(site),
+  covs,
   by = 'site'
   ) %>%
   select(-c(visit:time)) %>%
@@ -71,7 +75,7 @@ covs <- left_join(
   
 umfWithCovs <- unmarkedFrameDS(
   y = as.matrix(catTransectUmf),
-  siteCovs = data.frame(covs),
+  siteCovs = data.frame(covs_df),
   survey = 'line',
   dist.breaks=seq(0,50, by = 5),
   tlength = rep(200, nrow(catTransectUmf)),
@@ -79,6 +83,19 @@ umfWithCovs <- unmarkedFrameDS(
   )
 
 umfWithCovs %>% summary
+
+
+# Fit models:
+
+densityNull <- distsamp(~1~1,umfWithCovs)
+densityHumanDensity <- distsamp(~1~hDensity, umfWithCovs)
+densityImp <- distsamp(~1~imp, umfWithCovs)
+densityHumanDensityAge <- distsamp(~1~hDensity+age, umfWithCovs)
+densityAge <- distsamp(~1~age, umfWithCovs)
+densityImpIntAge <- distsamp(~1~imp*age, umfWithCovs)
+densityImpIntHDensity <- distsamp(~1~imp*hDensity, umfWithCovs)
+densityIncome <- distsamp(~1~medianIncome, umfWithCovs)
+densityEdu <- distsamp(~1 ~eduHS, umfWithCovs)
 
 
 
@@ -91,9 +108,9 @@ umfWithCovs %>% summary
 # Playing around to see how recordTable() and detectionHistory() format things:
 
 
-# Creating a dataframe camtrapR will like for use in cameraOperation():
-#     Need setup and retrieval dedicated cols:
 
+
+# Get ready to create camera operation matrix:
 
 
 camOperation <- catSiteActivity %>%
@@ -106,23 +123,28 @@ camTakedown <- catSiteActivity %>%
 
 camOperation[,3] <- camTakedown[,2]
 
+
 colnames(camOperation) <- c('site', 'setup', 'takedown')
 
 
- 
-
-data(recordTableSample)
-
-view(recordTableSample)
+camID <- read.csv('camID.csv')
 
 
-# Still has an issue--can't read the dates:
+camOperation <- camOperation %>%
+  cbind(camID)
 
-cameraOperation(camOperation,
-                stationCol = "site",
-                setupCol = "setup",
+
+
+# Create camera operation matrix:
+
+camOpMatrix <- cameraOperation(camOperation,
+                stationCol = 'site',
+                cameraCol = 'cameraID',
+                setupCol = 'setup',
                 retrievalCol = 'takedown',
-                dateFormat = '%Y/%m/%d'
+                byCamera = FALSE,
+                allCamsOn = FALSE,
+                camerasIndependent = TRUE
                 )
 
 
@@ -130,6 +152,18 @@ cameraOperation(camOperation,
 
 # detectionHistory(recordTableSample,
 #                  species = "PBE",
+#                  camOp = camOpMatrix,
+#                  stationCol = 'Station',
+#                  speciesCol = 'Species',
+#                  recordDateTimeCol = "DateTimeOriginal",
+#                  occasionLength = 1,
+#                  day1 = 'station',
+#                  timeZone = "America/New_York",
+#                  includeEffort = FALSE
 #                  )
 
+
+# Sample:
+
+data(recordTableSample)
 

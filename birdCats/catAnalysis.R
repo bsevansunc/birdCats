@@ -92,40 +92,38 @@ umfWithCovs %>% summary
 
 
 # Creating a dataframe camtrapR will like for use in cameraOperation():
-#     Problem--need setup and retrieval dedicated cols
+#     Need setup and retrieval dedicated cols:
 
 
-cameraActivity <- catSiteActivity %>%
-                    filter(activity == "setup" | activity == "takedown")
+
+camOperation <- catSiteActivity %>%
+              filter(activity == 'setup') %>%
+              select(site, date)
+
+camTakedown <- catSiteActivity %>%
+                filter(activity == 'takedown') %>%
+                select(site, date)
+
+camOperation[,3] <- camTakedown[,2]
+
+colnames(camOperation) <- c('site', 'setup', 'takedown')
 
 
-# Did not work:
-
-# camSetup <- cameraActivity %>%
-#               filter(activity == 'setup') %>%
-#               select(site, date)
-
-# camTakedown <- cameraActivity %>%
-#                 filter(activity == 'takedown') %>%
-#                 select(site, date)
-
-# camReady <- left_join(camSetup, 
-#                       camTakedown,
-#                       by = 'site'
-#                       )
  
-
 
 data(recordTableSample)
 
 view(recordTableSample)
 
 
-# Not ready yet:
+# Still has an issue--can't read the dates:
 
-# cameraOperation(cameraActivity,
-#                 stationCol = "site",
-#                 setupCol = "")
+cameraOperation(camOperation,
+                stationCol = "site",
+                setupCol = "setup",
+                retrievalCol = 'takedown',
+                dateFormat = '%Y/%m/%d'
+                )
 
 
 # Not ready yet:

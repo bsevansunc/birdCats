@@ -65,7 +65,7 @@ catTransectUmf <- formatDistData(
   # occasionCol = 'visit'
   )
 
-covs_df <- left_join(
+sitesWithCovs <- left_join(
   catTransect,
   covs,
   by = 'site'
@@ -75,7 +75,7 @@ covs_df <- left_join(
   
 umfWithCovs <- unmarkedFrameDS(
   y = as.matrix(catTransectUmf),
-  siteCovs = data.frame(covs_df),
+  siteCovs = data.frame(sitesWithCovs),
   survey = 'line',
   dist.breaks=seq(0,50, by = 5),
   tlength = rep(200, nrow(catTransectUmf)),
@@ -87,15 +87,47 @@ umfWithCovs %>% summary
 
 # Fit models:
 
-densityNull <- distsamp(~1~1,umfWithCovs)
-densityHumanDensity <- distsamp(~1~hDensity, umfWithCovs)
-densityImp <- distsamp(~1~imp, umfWithCovs)
-densityHumanDensityAge <- distsamp(~1~hDensity+age, umfWithCovs)
-densityAge <- distsamp(~1~age, umfWithCovs)
-densityImpIntAge <- distsamp(~1~imp*age, umfWithCovs)
-densityImpIntHDensity <- distsamp(~1~imp*hDensity, umfWithCovs)
-densityIncome <- distsamp(~1~medianIncome, umfWithCovs)
-densityEdu <- distsamp(~1 ~eduHS, umfWithCovs)
+
+# Null:
+
+densityNull <- distsamp(~1 ~1, umfWithCovs)
+
+
+# Single covs:
+
+densityHumanDensity <- distsamp(~1 ~hDensity, umfWithCovs) # Model did not converge
+densityImp <- distsamp(~1 ~imp, umfWithCovs)
+densityAge <- distsamp(~1 ~age, umfWithCovs)
+densityIncome <- distsamp(~1 ~medianIncome, umfWithCovs) # NaNs produced
+densityEduHS <- distsamp(~1 ~eduHS, umfWithCovs)
+densityCan <- distsamp(~1 ~can, umfWithCovs)
+densityCanImp <- distsamp(~1 ~can + imp, umfWithCovs)
+densityMar <- distsamp(~1 ~marred, umfWithCovs)
+
+densityAge_detImp <- distsamp(~imp ~age, umfWithCovs)
+densityNull_detImp <- distsamp(~imp ~1, umfWithCovs)
+densityEduHS_detImp <- distsamp(~imp ~eduHS, umfWithCovs)
+
+
+
+# Additive:
+
+densityHDensityAge <- distsamp(~1 ~hDensity + age, umfWithCovs) # Model did not converge
+densityMarAge <- distsamp(~1 ~marred + age, umfWithCovs)
+
+
+# Interaction:
+
+densityImpIntAge <- distsamp(~1 ~imp*age, umfWithCovs) # NaNs produced
+densityImpIntHDensity <- distsamp(~1 ~imp*hDensity, umfWithCovs)
+densityMarIntAge <- distsamp(~1 ~marred*age, umfWithCovs)
+densityCanIntHDensity <- distsamp(~1 ~can*hDensity, umfWithCovs) # Model did not converge
+
+
+# View info, example:
+
+densityNull
+logLik(densityNull)*(-2)
 
 
 
@@ -163,7 +195,45 @@ camOpMatrix <- cameraOperation(camOperation,
 #                  )
 
 
-# Sample:
+# Package example:
 
 data(recordTableSample)
+
+
+# define image directory
+wd_images_ID <- system.file("pictures/sample_images", package = "camtrapR")
+# load station information
+data(camtraps)
+# create camera operation matrix
+camop_no_problem <- cameraOperation(CTtable      = camtraps,
+                                    stationCol   = "Station",
+                                    setupCol     = "Setup_date",
+                                    retrievalCol = "Retrieval_date",
+                                    hasProblems  = FALSE,
+                                    dateFormat   = "%d/%m/%Y"
+)
+
+# compute detection history for a species
+
+# with effort
+DetHist2 <- detectionHistory(recordTable          = recordTableSample,
+                             camOp                = camop_no_problem,
+                             stationCol           = "Station",
+                             speciesCol           = "Species",
+                             recordDateTimeCol    = "DateTimeOriginal",
+                             species              = "VTA",
+                             occasionLength       = 7,
+                             day1                 = "station",
+                             datesAsOccasionNames = FALSE,
+                             includeEffort        = TRUE,
+                             scaleEffort          = FALSE,
+                             timeZone             = "Asia/Kuala_Lumpur"
+)
+
+
+DetHist2[[1]]  # detection history
+
+
+
+
 

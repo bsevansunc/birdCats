@@ -30,21 +30,19 @@ catSites <- read.csv('catSiteData.csv') %>%
 
 catTransect <- read.csv('catDataTransect.csv') %>%
   tbl_df %>%
-  mutate(site = ifelse(site == 'OBRICHMD1', 'OBRICHRMD1', site)) %>%
+  filter(visit <= 4) %>%
   filter(!is.na(count)) %>%
   filter(species == 'cat') %>%
   left_join(catSiteActivity %>%
               filter(activity == 'transect'),
             by = c('site', 'visit')
             ) %>%
-  # filter(!is.na(distance)) %>%
   mutate(distance = as.numeric(distance),
          visit = as.factor(visit)) %>%
   arrange(site)
 
 covs <- read.csv('covariateData.csv') %>%
   tbl_df %>%
-  mutate(site = ifelse(site == 'OBRICHMD1', 'OBRICHRMD1', site)) %>%
   arrange(site)
 
 catIncidental <- read.csv('catDataIncidental.csv') %>%
@@ -70,22 +68,34 @@ sitesWithCovs <- left_join(
   covs,
   by = 'site'
   ) %>%
-  select(-c(visit:time)) %>%
+  select(-c(visit:dew)) %>%
   distinct
-  
-umfWithCovs <- unmarkedFrameDS(
-  y = as.matrix(catTransectUmf),
-  siteCovs = data.frame(sitesWithCovs),
-  survey = 'line',
-  dist.breaks=seq(0,50, by = 5),
-  tlength = rep(200, nrow(catTransectUmf)),
-  unitsIn = 'm'
+
+sitesWithObsCovs <- catTransect %>%
+  select(-c(species:date)) %>%
+  distinct
+
+# There is a problem here:
+
+umfWithCovs <- unmarkedFrameGDS(
+  y =              as.matrix(catTransectUmf),
+  siteCovs =       data.frame(sitesWithCovs),
+  numPrimary =     4,
+  yearlySiteCovs = data.frame(sitesWithObsCovs),
+  survey =         'line',
+  dist.breaks=     seq(0,50, by = 5),
+  tlength =        rep(200, nrow(catTransectUmf)),
+  unitsIn =        'm'
   )
 
-umfWithCovs %>% summary
-
+summary(umfWithCovs)
 
 # Fit models:
+
+# This does not work:
+
+gDensityNull <- gdistsamp(~1, ~1, ~1, umfWithCovs)
+
 
 
 # Null:
@@ -134,6 +144,22 @@ logLik(densityNull)*(-2)
 # =================================================================================*
 # ---- CAMERA DATA ----
 # =================================================================================*
+
+# Create detection history for each site:
+
+umfCam <- read.csv('catCamDetection.csv')
+
+camCovs <- covs %>%
+  filter(
+    site != 'GERYERIMD1' &
+    site != 'OLONMARDC1' &
+    site != 'MISSEDDC1' &
+    site != 'WOLFKARDC1' &
+    site != 'WOLFAMYDC1'
+  )
+
+
+
 
 
 

@@ -271,7 +271,7 @@ logLik(densityNull)*(-2)
 
 # Get density estimates from model
 
-siteDensity <- predict(densityGlobal, type="state") %>%
+transSiteDensity <- predict(densityGlobal, type="state") %>%
   select(Predicted) %>%
   data.frame
 
@@ -328,6 +328,13 @@ camDetDew <- pcount(~dewLow ~1, camUmfWithCovs, K = 50)
 camDetTempHigh <- pcount(~tempHigh ~1, camUmfWithCovs, K = 50)
 
 
+# Global
+
+camDensityGlobal <- pcount(
+  ~1 ~can+hDensity+medianIncomeAdj+eduC+marred+age, camUmfWithCovs, K = 50
+  )
+
+
 # Single abundance covariates
 
 camDensityImp <- pcount(~1 ~imp, camUmfWithCovs, K = 50)
@@ -355,9 +362,9 @@ camDensityAgeCanEduC <- pcount(~1 ~age + can + eduC, camUmfWithCovs, K = 50)
 
 # Get density estimates from model:
 
-camSiteDensity <- predict(camDensityNull, type = 'state') %>%
+camSiteDensity <- predict(camDensityGlobal, type = 'state') %>%
   select(Predicted) %>%
-  data.frame
+  as.matrix
 
 
 
@@ -365,8 +372,46 @@ camSiteDensity <- predict(camDensityNull, type = 'state') %>%
 # --------- PLOT ----------
 # ================================================================================*
 
-ggplot(data = siteDensity, aes(x = Predicted)) +
-  geom_histogram(bins = 10)
+# Combine density estimates:
 
-ggplot(data = camSiteDensity, aes(x = Predicted)) +
-  geom_histogram(bins = 10)
+transSites <- catTransect %>%
+  select(site) %>%
+  unique
+
+# camSites <- umfCam %>%
+#   select(site) %>%
+#   unique
+
+transSiteDensity <- cbind.data.frame(transSites, transSiteDensity)
+length(camSiteDensity) <- 53
+camSiteDensity <- camSiteDensity %>% data.frame
+
+
+siteDensityUntidy <- cbind.data.frame(transSiteDensity, camSiteDensity)
+
+colnames(siteDensityUntidy) <- c('site', 'trans', 'cam')
+
+# Tidy up the data:
+
+siteDensity <- gather(data = siteDensityUntidy,
+                      key = method,
+                      value = density,
+                      trans:cam) %>%
+  na.omit %>%
+  group_by(method)
+
+densitySumm <- siteDensity %>%
+  summarise(sample_size = length(method), 
+            mean = mean(density), 
+            sd = sd(density),
+            se = sd(density)/sqrt(length(method)))
+
+
+ggplot(data = densitySumm, aes(x = method, y = mean))+
+  geom_errorbar(aes(ymin = mean-se, ymax = mean+se), width = 0, size = 1)+
+  geom_point(fill = 'red', color = 'black', shape = 21, size = 4)+
+  scale_x_discrete('Method', labels = c('Camera', 'Transect'))+
+  scale_y_continuous('Mean density (per hectare)', limits = c(0, 1.2))+
+  theme(panel.grid = element_blank(), 
+        axis.line.x = element_line(linetype='solid', color='black'),
+        axis.line.y = element_line(linetype='solid', color='black'))

@@ -30,7 +30,6 @@ catSites <- read.csv('catSiteData.csv') %>%
 
 catTransect <- read.csv('catDataTransect.csv') %>%
   tbl_df %>%
-  filter(visit <= 4) %>%
   filter(!is.na(count)) %>%
   filter(species == 'cat') %>%
   left_join(catSiteActivity %>%
@@ -60,8 +59,8 @@ catTransectUmf <- formatDistData(
   data.frame(catTransect), 
   distCol="distance",
   transectNameCol="site", 
-  dist.breaks=seq(0,50, by = 5)#,
-#  occasionCol = 'visit'
+  dist.breaks=seq(0,50, by = 5),
+  occasionCol = 'visit'
   )
 
 # Get abundance covariates
@@ -86,7 +85,7 @@ sitesWithObsCovs <- catTransect %>%
 
 transposeCovariate <- function(data, covariate){
   sites <- unique(data$site)
-  transMat <- matrix(ncol = 4, nrow = length(sites))
+  transMat <- matrix(ncol = 6, nrow = length(sites))
   for(i in 1:length(sites)){
     dataSub <- data %>% filter(site == sites[i])
     transMat[i,] <- t(dataSub[covariate])
@@ -103,7 +102,7 @@ transTemp <- transposeCovariate(sitesWithObsCovs, 'temp')
 transDew <- transposeCovariate(sitesWithObsCovs, 'dew')
 
 longCovs <- cbind.data.frame(transTime,transTemp, transDew)
-colnames(longCovs) <- c(rep('time', 4), rep('temp', 4), rep('dew', 4))
+colnames(longCovs) <- c(rep('time', 6), rep('temp', 6), rep('dew', 6))
 
 longSitesWithObsCovs <- sitesWithObsCovs %>%
   select(site) %>%
@@ -407,11 +406,11 @@ densitySumm <- siteDensity %>%
             se = sd(density)/sqrt(length(method)))
 
 
-ggplot(data = densitySumm, aes(x = method, y = mean))+
+densPlot <- ggplot(data = densitySumm, aes(x = method, y = mean))+
   geom_errorbar(aes(ymin = mean-se, ymax = mean+se), width = 0, size = 1)+
   geom_point(fill = 'red', color = 'black', shape = 21, size = 4)+
   scale_x_discrete('Method', labels = c('Camera', 'Transect'))+
-  scale_y_continuous('Mean density (per hectare)', limits = c(0, 1.2))+
+  scale_y_continuous('Mean density (cats/ha)', limits = c(0, 1.2))+
   theme(panel.grid = element_blank(), 
         axis.line.x = element_line(linetype='solid', color='black'),
         axis.line.y = element_line(linetype='solid', color='black'))

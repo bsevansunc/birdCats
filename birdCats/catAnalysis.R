@@ -110,25 +110,32 @@ longSitesWithObsCovs <- sitesWithObsCovs %>%
   cbind.data.frame(longCovs)
 
 
+# Split the obsCovs into different matrices
+# as suggested on the unmarked Google Group
+
+longCovsTime <- longCovs[,1:6] %>%
+  as.matrix
+colnames(longCovsTime) <- NULL
+
+
+longCovsTemp <- longCovs[,7:12] %>%
+  as.matrix
+colnames(longCovsTemp) <- NULL
+
+
+longCovsDew <- longCovs[,13:18] %>%
+  as.matrix
+colnames(longCovsDew) <- NULL
+  
+
+
 # Create unmarkedFrameGDS object for gdistsamp
 
-# umfWithCovs <- unmarkedFrameGDS(
-#   y =              as.matrix(catTransectUmf),
-#   siteCovs =       data.frame(sitesWithCovs),
-#   numPrimary =     1,                              
-#   yearlySiteCovs = data.frame(longSitesWithObsCovs[,-1]),
-#   survey =         'line',
-#   dist.breaks=     seq(0,50, by = 5),
-#   tlength =        rep(200, nrow(catTransectUmf)),
-#   unitsIn =        'm'
-#   )
-
-
-# Create unmarkedFrameDS object for distsamp
-
-umfWithCovs <- unmarkedFrameDS(
+gUmfWithCovs <- unmarkedFrameGDS(
   y =              as.matrix(catTransectUmf),
-  siteCovs =       data.frame(sitesWithCovs),               
+  siteCovs =       data.frame(sitesWithCovs),
+  numPrimary =     6,
+  yearlySiteCovs = list(time = longCovsTime, temp = longCovsTemp, dew = longCovsDew),
   survey =         'line',
   dist.breaks=     seq(0,50, by = 5),
   tlength =        rep(200, nrow(catTransectUmf)),
@@ -136,26 +143,43 @@ umfWithCovs <- unmarkedFrameDS(
   )
 
 
+# Create unmarkedFrameDS object for distsamp
+
+# umfWithCovs <- unmarkedFrameDS(
+#   y =              as.matrix(catTransectUmf),
+#   siteCovs =       data.frame(sitesWithCovs),               
+#   survey =         'line',
+#   dist.breaks=     seq(0,50, by = 5),
+#   tlength =        rep(200, nrow(catTransectUmf)),
+#   unitsIn =        'm'
+#   )
+
+
 # ---------------------------------------------------------------------------------*
 # ----Transect model fitting----
 # ---------------------------------------------------------------------------------*
 
-# Not working
+# gdistsamp
 
-# gDensityNull <- gdistsamp(~1, ~1, ~1, umfWithCovs)
-# 
-# gDensityImp <- gdistsamp(~imp, ~1, ~1, umfWithCovs)
-# 
-# gDetTemp <- gdistsamp(~1, ~1, ~temp, umfWithCovs)
-# 
-# gDensityEduC_detDew <- gdistsamp(~eduC, ~1, ~dew, umfWithCovs)
-# 
-# gDetDewTemp <- gdistsamp(~1, ~1, ~dew+temp, umfWithCovs)
-# 
-# gDensityImp_detDewTemp <- gdistsamp(~imp, ~1, ~dew+temp, umfWithCovs)
+gDensityNull <- gdistsamp(~1, ~1, ~1, gUmfWithCovs)
+
+gDensityImp <- gdistsamp(~imp, ~1, ~1, gUmfWithCovs)
+
+gDetTemp <- gdistsamp(~1, ~1, ~temp, gUmfWithCovs)
+
+gDetTime <- gdistsamp(~1, ~1, ~time, gUmfWithCovs)
+
+gDensityEduC_detDew <- gdistsamp(~eduC, ~1, ~dew, gUmfWithCovs)
+
+gDetDewTemp <- gdistsamp(~1, ~1, ~dew+temp, gUmfWithCovs)
+
+gDetTempTime <- gdistsamp(~1, ~1, ~temp+time, gUmfWithCovs)
+
+gDensityImp_detDewTemp <- gdistsamp(~imp, ~1, ~dew+temp, gUmfWithCovs)
 
 
 
+# distsamp -- use gdistsamp instead once it is working
 
 # Null:
 

@@ -8,7 +8,7 @@ library(unmarked); library(dplyr); library(tidyr); library(camtrapR); library(gg
 # setwd('C:/Users/Kevin/Documents/GitHub/birdCats/birdCats') # Laptop -- K
 
 
-list.files()
+# list.files()
 
 options(stringsAsFactors = F)
 
@@ -294,7 +294,7 @@ logLik(densityNull)*(-2)
 
 # Get density estimates from model
 
-transSiteDensity <- predict(densityGlobal, type="state") %>%
+transSiteDensity <- predict(gDensityNull, type="lambda") %>%
   select(Predicted) %>%
   data.frame
 
@@ -333,8 +333,8 @@ camDetCovs <- read.csv('camDetCovs.csv') %>%
 
 camUmfWithCovs <- unmarkedFramePCount(
   umfCam[,-1],
-  siteCovs = camCovs#,
-#  obsCovs = camDetCovs
+  siteCovs = camCovs,
+  obsCovs = camDetCovs
   )
 
 

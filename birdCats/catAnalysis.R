@@ -349,41 +349,59 @@ camDensityNull <- pcount(~1 ~1, camUmfWithCovs, K = 50)
 
 camDetDew <- pcount(~dewLow ~1, camUmfWithCovs, K = 50)
 camDetTempHigh <- pcount(~tempHigh ~1, camUmfWithCovs, K = 50)
+camDetTempLow <- pcount(~tempLow ~1, camUmfWithCovs, K = 50)
+
+camDetGlob <- pcount(~dewLow+tempHigh+tempLow ~1, camUmfWithCovs, K = 50)
+camDetDewTempLow <- pcount(~dewLow+tempLow ~1, camUmfWithCovs, K = 50)
+camDetDewTempHigh <- pcount(~dewLow+tempHigh ~1, camUmfWithCovs, K = 50)
+
+# Not working: "NaNs produced"
+camDetDewIntTempLow <- pcount(
+  ~dewLow*tempLow ~1,
+  camUmfWithCovs,
+  K = 50,
+  control=list(reltol=1e-3))
 
 
 # Global
 
 camDensityGlobal <- pcount(
-  ~1 ~can+hDensity+medianIncomeAdj+eduC+marred+age, camUmfWithCovs, K = 50
+  ~dewLow ~can+hDensity+medianIncomeAdj+eduC+marred+age, camUmfWithCovs, K = 50
   )
 
 
 # Single abundance covariates
 
-camDensityImp <- pcount(~1 ~imp, camUmfWithCovs, K = 50)
-camDensityCan <- pcount(~1 ~can, camUmfWithCovs, K = 50)
-camDensityhDensity <- pcount(~1 ~hDensity, camUmfWithCovs, K = 50)
-camDensityAge <- pcount(~1 ~age, camUmfWithCovs, K = 50)
-camDensityIncome <- pcount(~1 ~medianIncomeAdj, camUmfWithCovs, K = 50)
-camDensityEduC <- pcount(~1 ~eduC, camUmfWithCovs, K = 50)
-camDensityEduHS <- pcount(~1 ~eduHS, camUmfWithCovs, K = 50)
-camDensityMar <- pcount(~1 ~marred, camUmfWithCovs, K = 50)
+camDensityImp <- pcount(~dewLow ~imp, camUmfWithCovs, K = 50)
+camDensityCan <- pcount(~dewLow ~can, camUmfWithCovs, K = 50)
+camDensityhDensity <- pcount(~dewLow ~hDensity, camUmfWithCovs, K = 50)
+camDensityAge <- pcount(~dewLow ~age, camUmfWithCovs, K = 50)
+camDensityIncome <- pcount(~dewLow ~medianIncomeAdj, camUmfWithCovs, K = 50)
+camDensityEduC <- pcount(~dewLow ~eduC, camUmfWithCovs, K = 50)
+camDensityEduHS <- pcount(~dewLow ~eduHS, camUmfWithCovs, K = 50)
+camDensityMar <- pcount(~dewLow ~marred, camUmfWithCovs, K = 50)
+
 
 
 # Additive
 
-camDensityCanEduC <- pcount(~1 ~can + eduC, camUmfWithCovs, K = 50)
-camDensityCanIncome <- pcount(~1 ~can + medianIncomeAdj, camUmfWithCovs, K = 50)
-camDensityAgeEduC <- pcount(~1 ~age + eduC, camUmfWithCovs, K = 50)
-camDensityAgeCan <- pcount(~1 ~age + can, camUmfWithCovs, K = 50)
+camDensityCanEduC <- pcount(~dewLow ~can + eduC, camUmfWithCovs, K = 50)
+camDensityCanIncome <- pcount(~dewLow ~can + medianIncomeAdj, camUmfWithCovs, K = 50)
+camDensityAgeEduC <- pcount(~dewLow ~age + eduC, camUmfWithCovs, K = 50)
+camDensityAgeCan <- pcount(~dewLow ~age + can, camUmfWithCovs, K = 50)
 
-camDensityAgeCanEduC <- pcount(~1 ~age + can + eduC, camUmfWithCovs, K = 50)
+camDensityAgeCanEduC <- pcount(~dewLow ~age + can + eduC, camUmfWithCovs, K = 50)
 
+camDensityImpHDensity <- pcount(~dewLow ~imp + hDensity, camUmfWithCovs, K = 50)
+camDensityImpAge <- pcount(~dewLow ~imp + age, camUmfWithCovs, K = 50)
+camDensityImpMarAge <- pcount(~dewLow ~imp + marred + age, camUmfWithCovs, K = 50)
 
 
 
 
 # Get density estimates from model:
+
+
 
 camSiteDensity <- predict(camDensityGlobal, type = 'state') %>%
   select(Predicted) %>%
@@ -401,9 +419,9 @@ transSites <- catTransect %>%
   select(site) %>%
   unique
 
-# camSites <- umfCam %>%
-#   select(site) %>%
-#   unique
+camSites <- umfCam %>%
+  select(site) %>%
+  unique
 
 transSiteDensity <- cbind.data.frame(transSites, transSiteDensity)
 length(camSiteDensity) <- 53

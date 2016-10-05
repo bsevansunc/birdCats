@@ -5,7 +5,7 @@ library(unmarked); library(dplyr); library(tidyr); library(camtrapR); library(gg
 
 # setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
 # setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B
-# setwd('C:/Users/Kevin/Documents/GitHub/birdCats/birdCats') # Laptop -- K
+# setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats') # Laptop -- K
 
 
 # list.files()

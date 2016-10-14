@@ -2,6 +2,7 @@
 # ---- SET-UP ----
 # =================================================================================*
 library(unmarked); library(dplyr); library(tidyr); library(camtrapR); library(ggplot2)
+library(AICcmodavg)
 
 # setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
 # setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B
@@ -42,12 +43,8 @@ catTransect <- read.csv('catDataTransect.csv') %>%
 
 covs <- read.csv('covariateData.csv') %>%
   tbl_df %>%
-  mutate(medianIncomeAdj = medianIncome/1000) %>%
   arrange(site)
 
-catIncidental <- read.csv('catDataIncidental.csv') %>%
-  tbl_df %>%
-  filter(!is.na(CAT))
 
 # =================================================================================*
 # ---- TRANSECT DATA: DISTANCE SAMPLING ----
@@ -161,143 +158,212 @@ gUmfWithCovs <- unmarkedFrameGDS(
 
 # gdistsamp
 
-gDensityNull <- gdistsamp(~1, ~1, ~1, gUmfWithCovs)
+# Null model
 
-gDensityImp <- gdistsamp(~imp, ~1, ~1, gUmfWithCovs)
-
-gDetTemp <- gdistsamp(~1, ~1, ~temp, gUmfWithCovs)
-
-gDetTime <- gdistsamp(~1, ~1, ~time, gUmfWithCovs)
-
-gDensityEduC_detDew <- gdistsamp(~eduC, ~1, ~dew, gUmfWithCovs)
-
-gDetDewTemp <- gdistsamp(~1, ~1, ~dew+temp, gUmfWithCovs)
-
-gDetTempTime <- gdistsamp(~1, ~1, ~temp+time, gUmfWithCovs)
-
-gDensityImp_detDewTemp <- gdistsamp(~imp, ~1, ~dew+temp, gUmfWithCovs)
+mNull <-  gdistsamp(
+  lambdaformula = ~ 1,
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density', 
+  unitsOut = 'ha', mixture="P")
 
 
+# Global model
 
-# distsamp -- use gdistsamp instead once it is working
-
-# Null:
-
-densityNull <- distsamp(~1 ~1, umfWithCovs)
-
-
-# Global:
-
-densityGlobal <-distsamp(
-  ~1 ~can + hDensity + age + marred + eduC + medianIncomeAdj, umfWithCovs
-  )
+mGlobal <- gdistsamp(
+  lambdaformula = ~ scale(imp)*scale(can) +
+    scale(imp^2) + scale(can^2) +
+    scale(age)*scale(marred) + scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density', 
+  unitsOut = 'ha', mixture="P")
 
 
-# Single covs:
+# Abundance--impervious^2 + median income. This is the best model
 
-densityHDensity <- distsamp(
-  ~1 ~hDensity, umfWithCovs, control=list(
-    maxit=1000,trace=TRUE, REPORT=1
-    )
-  )
-
-densityImp <- distsamp(~1 ~imp, umfWithCovs)
-
-densityAge <- distsamp(~1 ~age, umfWithCovs)
-
-densityIncome <- distsamp(~1 ~medianIncomeAdj, umfWithCovs) # NaNs produced
-
-densityEduHS <- distsamp(~1 ~eduHS, umfWithCovs)
-
-densityEduC <- distsamp(~1 ~eduC, umfWithCovs)
-
-densityCan <- distsamp(~1 ~can, umfWithCovs)
-
-densityMar <- distsamp(~1 ~marred, umfWithCovs)
+mImp2Income <- gdistsamp(
+  lambdaformula = ~ scale(imp)  + scale(imp^2) + 
+    scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", #output = 'density', unitsOut = 'ha', 
+  mixture="NB")
 
 
+# Abundance--imp
 
-# Additive:
-
-densityHDensityAge <- distsamp(
-  ~1 ~hDensity + age, umfWithCovs, control=list(
-    maxit=1000,trace=TRUE, REPORT=1
-    )
-  )
-
-densityHDensityEduC <- distsamp(
-  ~1 ~hDensity + eduC, umfWithCovs, control=list(
-    maxit=1700,trace=TRUE, REPORT=1
-    )
-  )
-
-densityHDensityCan <- distsamp(
-  ~1 ~hDensity + can, umfWithCovs, control=list(
-    maxit=1700,trace=TRUE, REPORT=1
-  )
-)
-
-densityHDensityCanEduC <- distsamp(
-  ~1 ~hDensity + can + eduC, umfWithCovs, control=list(
-    maxit=1700,trace=TRUE, REPORT=1
-  )
-)
-
-densityMarAge <- distsamp(~1 ~marred + age, umfWithCovs)
-
-densityCanImp <- distsamp(~1 ~can + imp, umfWithCovs)
-
-densityIncomeAge <- distsamp(~1 ~medianIncomeAdj + age, umfWithCovs)
-
-densityAgeEduC <- distsamp(~1 ~eduC + age, umfWithCovs)
-
-densityCanAge <- distsamp(~1 ~can + age, umfWithCovs)
-
-densityCanEduC <- distsamp (~1 ~can + eduC, umfWithCovs)
-
-densityMarEduC <- distsamp(~1 ~marred + eduC, umfWithCovs)
-
-densityCanIncome <- distsamp(~1 ~can + medianIncomeAdj, umfWithCovs)
-
-densityIncomeEduC <- distsamp(~1 ~medianIncomeAdj + eduC, umfWithCovs)
-
-densityIncomeEduCCan <- distsamp(~1 ~medianIncomeAdj + eduC + can, umfWithCovs)
+mImp <- gdistsamp(
+  lambdaformula = ~ scale(imp),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
 
 
+# Abundance--can
+
+mCan <- gdistsamp(
+  lambdaformula = ~ scale(can),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
 
 
-# Interaction:
+# Abundance--medianIncome
 
-densityImpIntAge <- distsamp(~1 ~imp*age, umfWithCovs) # NaNs produced
-
-densityCanIntAge <- distsamp(~1 ~can*age, umfWithCovs)
-
-densityImpIntHDensity <- distsamp(~1 ~imp*hDensity, umfWithCovs)
-
-densityMarIntAge <- distsamp(~1 ~marred*age, umfWithCovs)
-
-densityCanIntHDensity <- distsamp(
-  ~1 ~can*hDensity, umfWithCovs, control=list(
-    maxit=700,trace=TRUE, REPORT=1
-    )
-  ) 
-
-densityMarIntEduC <- distsamp(~1 ~marred*eduC, umfWithCovs)
+mIncome <- gdistsamp(
+  lambdaformula = ~ scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
 
 
-# View info, example:
+# Abundance--imp + can
 
-densityNull
-logLik(densityNull)*(-2)
+mImpCan <- gdistsamp(
+  lambdaformula = ~ scale(imp) + scale(can),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
 
 
+# Abundance--imp^2 + can^2 + medianIncome
 
-# Get density estimates from model
+mImp2Can2Income <- gdistsamp(
+  lambdaformula = ~ scale(imp) + scale(imp^2) + 
+    scale(can) + scale(can^2) + scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density', 
+  unitsOut = 'ha', mixture="P")
 
-transSiteDensity <- predict(gDensityNull, type="lambda") %>%
+
+# Abundance--impervious^2
+
+mImp2 <- gdistsamp(
+  lambdaformula = ~ scale(imp) + scale(imp^2),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density', 
+  unitsOut = 'ha', mixture="P")
+
+
+# Abundance--canopy^2
+
+mCan2 <- gdistsamp(
+  lambdaformula = ~ scale(can) + scale(can^2),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density',
+  unitsOut = 'ha', mixture="P")
+
+
+# Abundance--canopy^2 + medianIncome
+
+mCan2Income <- gdistsamp(
+  lambdaformula = ~ scale(can) + scale(can^2) +
+    scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density',
+  unitsOut = 'ha', mixture="P")
+
+
+# Abundance--can + medianIncome
+
+mCanIncome <- gdistsamp(
+  lambdaformula = ~ scale(can) +
+    scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density',
+  unitsOut = 'ha', mixture="NB")
+
+
+# Abundance--imp + medianIncome
+
+mImpIncome <- gdistsamp(
+  lambdaformula = ~ scale(imp) +
+    scale(medianIncome),
+  phiformula = ~ scale(time),
+  pformula = ~ scale(dew) * scale(temp) + scale(time),
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", output = 'density',
+  unitsOut = 'ha', mixture="NB")
+
+
+# -----------------*
+# ---- Density ----
+# -----------------*
+
+transDensity <- predict(mImp2Income, type="lambda") %>%
   select(Predicted) %>%
   data.frame
 
+
+
+
+
+# Get AICc values from models:
+
+AICc(mNull, return.K = FALSE)
+AICc(mGlobal, return.K = FALSE)
+AICc(mCan, return.K = FALSE)
+AICc(mImp, return.K = FALSE)
+AICc(mIncome, return.K = FALSE)
+AICc(mImpCan, return.K = FALSE)
+AICc(mImp2, return.K = FALSE) # Second-best
+AICc(mCan2, return.K = FALSE)
+AICc(mCanIncome, return.K = FALSE)
+AICc(mImpIncome, return.K = FALSE)
+AICc(mImp2Income, return.K = FALSE) # This is the best model
+AICc(mCan2Income, return.K = FALSE)
+AICc(mImp2Can2Income, return.K = FALSE)
+
+
+# Get log-likelihoods:
+
+extractLL(mNull)*(-2)
+extractLL(mCan)*(-2)
+extractLL(mImp)*(-2)
+extractLL(mImpCan)*(-2)
+extractLL(mCan2)*(-2)
+extractLL(mImp2)*(-2)
+extractLL(mCan2Income)*(-2)
+extractLL(mImp2Income)*(-2)
+extractLL(mImp2Can2Income)*(-2)
+extractLL(mIncome)*(-2)
+extractLL(mCanIncome)*(-2)
+extractLL(mImpIncome)*(-2)
+
+
+
+# ----------------------------------------------------------------*
+# ------ Visualize variables ------
+# ----------------------------------------------------------------*
+
+transSites <- covs %>%
+  select(site, imp, medianIncome)
+
+transSiteDensity <- cbind.data.frame(transSites, transDensity)
+imp <- transSiteDensity$imp
+inc <- transSiteDensity$medianIncome
+dens <- transSiteDensity$Predicted
+
+plot(imp, dens)
+plot(inc, dens)
 
 
 # =================================================================================*
@@ -345,67 +411,160 @@ camUmfWithCovs <- unmarkedFramePCount(
 
 #Null
 
-camDensityNull <- pcount(~1 ~1, camUmfWithCovs, K = 50)
+camNull <- pcount(
+  formula = ~scale(dewLow) ~1, 
+  data= camUmfWithCovs,
+  K = 50)
 
-camDetDew <- pcount(~dewLow ~1, camUmfWithCovs, K = 50)
-camDetTempHigh <- pcount(~tempHigh ~1, camUmfWithCovs, K = 50)
-camDetTempLow <- pcount(~tempLow ~1, camUmfWithCovs, K = 50)
-
-camDetGlob <- pcount(~dewLow+tempHigh+tempLow ~1, camUmfWithCovs, K = 50)
-camDetDewTempLow <- pcount(~dewLow+tempLow ~1, camUmfWithCovs, K = 50)
-camDetDewTempHigh <- pcount(~dewLow+tempHigh ~1, camUmfWithCovs, K = 50)
-
-# Not working: "NaNs produced"
-camDetDewIntTempLow <- pcount(
-  ~dewLow*tempLow ~1,
-  camUmfWithCovs,
-  K = 50,
-  control=list(reltol=1e-3))
 
 
 # Global
 
-camDensityGlobal <- pcount(
-  ~dewLow ~can+hDensity+medianIncomeAdj+eduC+marred+age, camUmfWithCovs, K = 50
-  )
+camImp2Can2Income <- pcount(
+  formula = ~scale(dewLow) 
+    ~scale(can) + scale(can^2) + scale(imp) + scale(imp^2) + scale(medianIncome), 
+  data= camUmfWithCovs,
+  K = 50)
 
 
 # Single abundance covariates
 
-camDensityImp <- pcount(~dewLow ~imp, camUmfWithCovs, K = 50)
-camDensityCan <- pcount(~dewLow ~can, camUmfWithCovs, K = 50)
-camDensityhDensity <- pcount(~dewLow ~hDensity, camUmfWithCovs, K = 50)
-camDensityAge <- pcount(~dewLow ~age, camUmfWithCovs, K = 50)
-camDensityIncome <- pcount(~dewLow ~medianIncomeAdj, camUmfWithCovs, K = 50)
-camDensityEduC <- pcount(~dewLow ~eduC, camUmfWithCovs, K = 50)
-camDensityEduHS <- pcount(~dewLow ~eduHS, camUmfWithCovs, K = 50)
-camDensityMar <- pcount(~dewLow ~marred, camUmfWithCovs, K = 50)
+camImp <- pcount(
+  formula = ~dewLow ~imp, 
+  data = camUmfWithCovs,
+  K = 50)
+
+camCan <- pcount(
+  formula = ~dewLow ~can, 
+  data = camUmfWithCovs, 
+  K = 50)
+
+camIncome <- pcount(
+  formula = ~scale(dewLow) ~scale(medianIncome),
+  data = camUmfWithCovs, 
+  K = 50)
 
 
 
 # Additive
 
-camDensityCanEduC <- pcount(~dewLow ~can + eduC, camUmfWithCovs, K = 50)
-camDensityCanIncome <- pcount(~dewLow ~can + medianIncomeAdj, camUmfWithCovs, K = 50)
-camDensityAgeEduC <- pcount(~dewLow ~age + eduC, camUmfWithCovs, K = 50)
-camDensityAgeCan <- pcount(~dewLow ~age + can, camUmfWithCovs, K = 50)
+camCanIncome <- pcount(
+  formula = ~scale(dewLow) ~scale(can) + scale(medianIncome),
+  data = camUmfWithCovs,
+  K = 50)
 
-camDensityAgeCanEduC <- pcount(~dewLow ~age + can + eduC, camUmfWithCovs, K = 50)
+camImpIncome <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(medianIncome),
+  data = camUmfWithCovs,
+  K = 50)
 
-camDensityImpHDensity <- pcount(~dewLow ~imp + hDensity, camUmfWithCovs, K = 50)
-camDensityImpAge <- pcount(~dewLow ~imp + age, camUmfWithCovs, K = 50)
-camDensityImpMarAge <- pcount(~dewLow ~imp + marred + age, camUmfWithCovs, K = 50)
-
-
-
-
-# Get density estimates from model:
-
+camImpCan <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(can),
+  data = camUmfWithCovs,
+  K = 50)
 
 
-camSiteDensity <- predict(camDensityGlobal, type = 'state') %>%
+# Quadratic
+
+camImp2 <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2),
+  data = camUmfWithCovs,
+  K = 50)
+
+# This is the best model: 
+camCan2 <- pcount(
+  formula = ~scale(dewLow) ~scale(can) + scale(can^2),
+  data = camUmfWithCovs,
+  K = 50)
+
+camImp2Income <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(medianIncome),
+  data = camUmfWithCovs,
+  K = 50)
+
+camCan2Income <- pcount(
+  formula = ~scale(dewLow) ~scale(can) + scale(can^2) + scale(medianIncome),
+  data = camUmfWithCovs,
+  K = 50)
+
+camCan2Imp <- pcount(
+  formula = ~scale(dewLow) ~scale(can) + scale(can^2) + scale(imp),
+  data = camUmfWithCovs,
+  K = 50)
+
+camImp2Can <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(can),
+  data = camUmfWithCovs,
+  K = 50)
+
+camImp2Can2 <- pcount(
+  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(can) + scale(can^2),
+  data = camUmfWithCovs,
+  K = 50)
+
+
+# -----------------*
+# ---- Density ----
+# -----------------*
+
+camDensity <- predict(camCan2, type = 'state') %>%
   select(Predicted) %>%
-  as.matrix
+  data.frame
+
+
+# -------------------------------------------------*
+# ------ Visualize variables ------
+# -------------------------------------------------*
+
+camSites <- camCovs %>%
+  select(site, can)
+
+camSiteDensity <- cbind.data.frame(camSites, camDensity)
+can <- camSiteDensity$can
+camDens <- camSiteDensity$Predicted
+
+plot(can, camDens)
+
+
+
+# Get AICc scores
+
+AICc(camNull, return.K = FALSE)
+AICc(camCan, return.K = FALSE)
+AICc(camImp, return.K = FALSE)
+AICc(camIncome, return.K = FALSE)
+AICc(camCan2, return.K = FALSE)
+AICc(camImp2, return.K = FALSE)
+AICc(camImpCan, return.K = FALSE)
+AICc(camImpIncome, return.K = FALSE)
+AICc(camCanIncome, return.K = FALSE)
+AICc(camCan2Income, return.K = FALSE)
+AICc(camImp2Income, return.K = FALSE)
+AICc(camImp2Can2Income, return.K = FALSE)
+AICc(camImp2Can2, return.K = FALSE)
+AICc(camImp2Can, return.K = FALSE)
+AICc(camCan2Imp, return.K = FALSE)
+
+
+# Get log-likelihood:
+
+logLik(camNull)*(-2)
+logLik(camCan)*(-2)
+logLik(camImp)*(-2)
+logLik(camIncome)*(-2)
+logLik(camCan2)*(-2)
+logLik(camImp2)*(-2)
+logLik(camImpCan)*(-2)
+logLik(camImpIncome)*(-2)
+logLik(camCanIncome)*(-2)
+logLik(camCan2Income)*(-2)
+logLik(camImp2Income)*(-2)
+logLik(camImp2Can2)*(-2)
+logLik(camImp2Can)*(-2)
+logLik(camCan2Imp)*(-2)
+logLik(camImp2Can2Income)*(-2)
+
+
 
 
 
@@ -413,46 +572,52 @@ camSiteDensity <- predict(camDensityGlobal, type = 'state') %>%
 # --------- PLOT ----------
 # ================================================================================*
 
+# THIS WILL NOT WORK TEMPORARILY--I have to combine the trans and cam
+# density estimates better before this will work again. Density estimates 
+# are plotted against individual variables at the end of the trans and cam
+# sections above.
+
+
 # Combine density estimates:
 
-transSites <- catTransect %>%
-  select(site) %>%
-  unique
-
-camSites <- umfCam %>%
-  select(site) %>%
-  unique
-
-transSiteDensity <- cbind.data.frame(transSites, transSiteDensity)
-length(camSiteDensity) <- 53
-camSiteDensity <- camSiteDensity %>% data.frame
-
-
-siteDensityUntidy <- cbind.data.frame(transSiteDensity, camSiteDensity)
-
-colnames(siteDensityUntidy) <- c('site', 'trans', 'cam')
-
-# Tidy up the data:
-
-siteDensity <- gather(data = siteDensityUntidy,
-                      key = method,
-                      value = density,
-                      trans:cam) %>%
-  na.omit %>%
-  group_by(method)
-
-densitySumm <- siteDensity %>%
-  summarise(sample_size = length(method), 
-            mean = mean(density), 
-            sd = sd(density),
-            se = sd(density)/sqrt(length(method)))
-
-
-densPlot <- ggplot(data = densitySumm, aes(x = method, y = mean))+
-  geom_errorbar(aes(ymin = mean-se, ymax = mean+se), width = 0, size = 1)+
-  geom_point(fill = 'red', color = 'black', shape = 21, size = 4)+
-  scale_x_discrete('Method', labels = c('Camera', 'Transect'))+
-  scale_y_continuous('Mean density (cats/ha)', limits = c(0, 1.2))+
-  theme(panel.grid = element_blank(), 
-        axis.line.x = element_line(linetype='solid', color='black'),
-        axis.line.y = element_line(linetype='solid', color='black'))
+# transSites <- catTransect %>%
+#   select(site) %>%
+#   unique
+# 
+# camSites <- umfCam %>%
+#   select(site) %>%
+#   unique
+# 
+# transSiteDensity <- cbind.data.frame(transSites, transDensity)
+# length(camDensity) <- 53
+# camDensity <- camDensity %>% data.frame
+# 
+# 
+# siteDensityUntidy <- cbind.data.frame(transSiteDensity, camSiteDensity)
+# 
+# colnames(siteDensityUntidy) <- c('site', 'trans', 'cam')
+# 
+# # Tidy up the data:
+# 
+# siteDensity <- gather(data = siteDensityUntidy,
+#                       key = method,
+#                       value = density,
+#                       trans:cam) %>%
+#   na.omit %>%
+#   group_by(method)
+# 
+# densitySumm <- siteDensity %>%
+#   summarise(sample_size = length(method), 
+#             mean = mean(density), 
+#             sd = sd(density),
+#             se = sd(density)/sqrt(length(method)))
+# 
+# 
+# densPlot <- ggplot(data = densitySumm, aes(x = method, y = mean))+
+#   geom_errorbar(aes(ymin = mean-se, ymax = mean+se), width = 0, size = 1)+
+#   geom_point(fill = 'red', color = 'black', shape = 21, size = 5)+
+#   scale_x_discrete('Method', labels = c('Camera', 'Transect'))+
+#   scale_y_continuous('Mean density (cats/ha)', limits = c(0, 2.2))+
+#   theme(panel.grid = element_blank(), 
+#         axis.line.x = element_line(linetype='solid', color='black'),
+#         axis.line.y = element_line(linetype='solid', color='black'))

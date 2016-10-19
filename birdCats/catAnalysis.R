@@ -190,8 +190,8 @@ mImp2Income <- gdistsamp(
   phiformula = ~ scale(time),
   pformula = ~ scale(dew) * scale(temp) + scale(time),
   data = gUmfWithCovs,
-  keyfun = "halfnorm", #output = 'density', unitsOut = 'ha', 
-  mixture="NB")
+  keyfun = "halfnorm", output = 'density', unitsOut = 'ha', 
+  mixture="P")
 
 
 # Abundance--imp
@@ -308,11 +308,29 @@ mImpIncome <- gdistsamp(
 # ---- Density ----
 # -----------------*
 
-transDensity <- predict(mImp2Income, type="lambda") %>%
-  select(Predicted) %>%
-  data.frame
+transDensity <- predict(mImp2Income, type="lambda", appenddata = TRUE)
 
 
+# ----------------------------------------------------------------*
+# ------ Predict based on new data ------
+# ----------------------------------------------------------------*
+
+nd <- data.frame(imp = 0:100, 
+                 medianIncome = 106227,
+                 time = 533.5,
+                 dew = 68,
+                 temp = 79)
+
+predictImp <- predict(mImp2Income, newdata = nd, type = 'lambda', appenddata = TRUE)
+
+
+nd2 <- data.frame(imp = median(as.vector(covs$imp)), 
+                 medianIncome = seq(49800, 240600, by = 100),
+                 time = median(as.vector(sitesWithObsCovs$time)),
+                 dew = median(as.vector(sitesWithObsCovs$dew)),
+                 temp = median(as.vector(sitesWithObsCovs$temp)))
+
+predictInc <- predict(mImp2Income, newdata = nd2, type = 'lambda', appenddata = TRUE)
 
 
 
@@ -357,13 +375,15 @@ extractLL(mImpIncome)*(-2)
 transSites <- covs %>%
   select(site, imp, medianIncome)
 
-transSiteDensity <- cbind.data.frame(transSites, transDensity)
+transSiteDensity <- cbind.data.frame(transSites, transDensity$Predicted)
 imp <- transSiteDensity$imp
 inc <- transSiteDensity$medianIncome
 dens <- transSiteDensity$Predicted
 
 plot(imp, dens)
 plot(inc, dens)
+
+
 
 
 # =================================================================================*

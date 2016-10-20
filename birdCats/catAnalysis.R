@@ -1,8 +1,21 @@
 # =================================================================================*
 # ---- SET-UP ----
 # =================================================================================*
-library(unmarked); library(dplyr); library(tidyr); library(camtrapR); library(ggplot2)
-library(AICcmodavg)
+
+# Function searches packages in installed package list, add them if you don't have them, and loads the library:
+
+smartLibrary <- function(packageVector){
+  for(i in 1:length(packageVector)){
+    package <- packageVector[i]
+    if(!package %in% rownames(installed.packages())){
+      install.packages(packageVector[i],repos="http://cran.rstudio.com/",
+                       dependencies=TRUE)
+    }
+  }
+  lapply(packageVector, library, character.only = TRUE)
+}
+
+smartLibrary(c('unmarked', 'dplyr', 'tidyr', 'camtrapR', 'ggplot2', 'AICcmodavg'))
 
 # setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
 # setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B

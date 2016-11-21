@@ -123,7 +123,7 @@ LATE-MORNING, AFTERNOON BANDING:
 
 **Equipment needs**: As above. 
 
-**Description of activity**: SMBC/NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection bird s on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding volunteers will be informed via email that their shift for that day has been cancelled. The timeline for training includes: 
+**Description of activity**: SMBC/NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection birds on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding, volunteers will be informed via email that their shift for that day has been cancelled. The full volunteer protocol document may be viewed at [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/nzpBanding_volunteerProtocols.pdf). The timeline for training includes: 
 
 * **Week 1**: Volunteers will observe extraction and processing of birds
 * **Week 2**: Volunteers will observe processing of birds and learn to extract House Sparrows from nets under the guidance of SMBC/NZP staff

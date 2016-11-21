@@ -33,9 +33,9 @@ h3 { /* Header 1 */
 
 
 **Description of activity**:
-Banding operations will occur on Thursdays and Fridays of each week, weather permitting. We will not band during measurable precipitation events, during windy conditions (>4 on the Beaufort Scale, gusts of >19 miles per hour), or at temperatures below 0&deg;C (see Bander's Code of Ethics at [this link](https://www.pwrc.usgs.gov/BBl/resources/ethics.cfm)). During each banding day, 10-20 mist nets will be set up throughout the zoo grounds and will be open for roughly 6 hours per day (see below). Mist nets are 12 m long (some are 6 m) and are fastened at each end to aluminum conduit (height = 3 m). <img style="float: left; border:8px solid white" src="peteMistNet.jpg" width = '370'> Potter traps (see [this link](http://www.powdermillarc.org/highlights/2013/winter.aspx) for an example of a potter trap) may be used in conjunction with netting efforts in publically inaccessible locations and at feeding stations. All nets visible from the path will have a sign warning onlookers that it is illegal to touch the net for any reason (go to [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/zooBandingSign.png) to view or download the sign). It is prohibited for any individual (general public, volunteers, SMBC/NZP staff) to attempt to extract birds from the net without the express permission of the project coordinator (Brian Evans, EvansBr@si.edu, 919-723-7907). Birds will be extracted during “net runs” (i.e., a circuit walked to check nets for captured birds), with nets checked every 30 minutes. A bird caught in net will be placed in a cloth bag and brought to a central location where it will be aged, sexed, measured (e.g., wing chord), banded with color bands and a USGS Aluminum band, and released.  
+Banding operations will occur on Thursdays and Fridays of each week, weather permitting. We will not band during measurable precipitation events, during windy conditions (>4 on the Beaufort Scale, gusts of >19 miles per hour), or at temperatures below 0&deg;C (see Bander's Code of Ethics at [this link](https://www.pwrc.usgs.gov/BBl/resources/ethics.cfm)). During each banding day, 10-20 mist nets will be set up throughout the zoo grounds and will be open for roughly 6 hours per day (see below). Mist nets are 12 m long (some are 6 m) and are fastened at each end to aluminum conduit (height = 3 m). <img style="float: left; border:8px solid white" src="peteMistNet.jpg" width = '370'> Potter traps (see [this link](http://www.powdermillarc.org/highlights/2013/winter.aspx) for an example of a potter trap) may be used in conjunction with netting efforts in publically inaccessible locations and at feeding stations. All nets visible from the path will have a sign warning onlookers that it is illegal to touch the net for any reason (go to [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/zooBandingSign.png) to view or download the sign). It is prohibited for any individual (general public, volunteers, NZP staff) to attempt to extract birds from the net without the express permission of the project coordinator (Brian Evans, EvansBr@si.edu, 919-723-7907). Birds will be extracted during “net runs” (i.e., a circuit walked to check nets for captured birds), with nets checked every 30 minutes. A bird caught in net will be placed in a cloth bag and brought to a central location where it will be aged, sexed, measured (e.g., wing chord), banded with color bands and a USGS Aluminum band, and released.  
 
-**Equipment needs**: The full banding equipment list is provided on a spreadsheet available at [this link](https://docs.google.com/spreadsheets/d/1lZfYova52vUKNAccVP1Yd8WZyTrK8EciHt9YnLnjn2U/edit#gid=0). We are requesting additional equipment for communication with the public, including: uniforms for SMBC/NZP staff and name tags for SMBC/NZP staff and volunteers. Additionally, we currently are maintaining three bird feeders on the grounds of the Science Building and request to place more feeders on zoo grounds to maximize catch rates. Finally, because some "net runs"" (i.e., a circuit walked to check nets for captured birds) may be considerably long, we would like to acquire a cart to drive between nets. If available, this cart will only be used before zoo grounds are open to the public.  
+**Equipment needs**: The full banding equipment list is provided on a spreadsheet available at [this link](https://docs.google.com/spreadsheets/d/1lZfYova52vUKNAccVP1Yd8WZyTrK8EciHt9YnLnjn2U/edit#gid=0). We are requesting additional equipment for communication with the public, including: uniforms for NZP staff and name tags for NZP staff and volunteers. Additionally, we currently are maintaining three bird feeders on the grounds of the Science Building and request to place more feeders on zoo grounds to maximize catch rates. Finally, because some "net runs"" (i.e., a circuit walked to check nets for captured birds) may be considerably long, we would like to acquire a cart to drive between nets. If available, this cart will only be used before zoo grounds are open to the public.  
 
 **Locations of activity**: The map below displays potential net and potential banding station locations. You may also use your smart phone to explore net and potential banding station locations in Google Maps using [this link](https://www.google.com/maps/d/edit?hl=en&mid=1dUpGaxB929TXEXI-2Nt5hx64hu4&ll=38.92919658440485%2C-77.05010128836057&z=17). Net locations and banding stations are separated into upper (red) and lower (purple) zoo grounds. Each section will be sampled on a separate day (e.g., the upper zoo will be sampled on Thursdays and the lower zoo on Fridays). Smaller circles represent net locations and larger circles represent potential locations for the banding stations. 
 
@@ -86,28 +86,28 @@ leaflet(data = pointFrame) %>%
 MORNING BANDING: 
 
 *	**0600-0615**: Preparatory meeting at the banding station (e.g., Amazonia, see map)  
-*	**0615-0645**: SMBC/NZP staff and volunteers will set up the banding station and open nets  
+*	**0615-0645**: NZP staff and volunteers will set up the banding station and open nets  
 *	**0645-1145**: All nets are open and checked every 30 minutes  
 *	**1145-1215**: All nets are closed and removed. The banding station is taken down  
-*	**1215-1230**: SMBC/NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned)  
+*	**1215-1230**: NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned)  
 
 MID-MORNING, EARLY AFTERNOON BANDING:
 
 *	**0800-0815**: Preparatory meeting at the banding station (e.g., Amazonia, see map) 
-*	**0815-0845**: SMBC/NZP staff and volunteers will set up the banding station and open nets
+*	**0815-0845**: NZP staff and volunteers will set up the banding station and open nets
 *	**0845-1345**: All nets are open and checked every 30 minutes 1
 *	**1345-1415**: All nets are closed and removed. The banding station is taken down
-*	**1415-1430**: SMBC/NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned) 
+*	**1415-1430**: NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned) 
 
 LATE-MORNING, AFTERNOON BANDING:
 
 *	**1000-1015**: Preparatory meeting at the banding station (e.g., Amazonia, see map)
-*	**1015-1045**: SMBC/NZP staff and volunteers will set up the banding station and open nets
+*	**1015-1045**: NZP staff and volunteers will set up the banding station and open nets
 *	**1045-1545**: All nets are open and checked every 30 minutes 1
 *	**1545-1615**: All nets are closed and removed. The banding station is taken down
-*	**1615-1630**: SMBC/NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned) 
+*	**1615-1630**: NZP staff and volunteers gather to discuss the banding day (e.g., any difficulties encountered, lessons learned) 
 
-**Staffing needs**: This phase of the project will require two SMBC/NZP staff members per banding day to assist with extracting birds from nets and banding.  
+**Staffing needs**: This phase of the project will require two NZP staff members per banding day to assist with extracting birds from nets and banding.  
 
 **Evaluation**: For each of the goals provided above, we will evaluate:
 
@@ -123,15 +123,15 @@ LATE-MORNING, AFTERNOON BANDING:
 
 **Equipment needs**: As above. 
 
-**Description of activity**: SMBC/NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection birds on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding, volunteers will be informed via email that their shift for that day has been cancelled. The full volunteer protocol document may be viewed at [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/nzpBanding_volunteerProtocols.pdf). The timeline for training includes: 
+**Description of activity**: NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection birds on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding, volunteers will be informed via email that their shift for that day has been cancelled. The full volunteer protocol document may be viewed at [this link](https://github.com/bsevansunc/birdCats/blob/master/NZPBanding_volunteerProtocols.pdf). The timeline for training includes: 
 
 * **Week 1**: Volunteers will observe extraction and processing of birds
-* **Week 2**: Volunteers will observe processing of birds and learn to extract House Sparrows from nets under the guidance of SMBC/NZP staff
-* **Week 3**: Under the guidance of SMBC/NZP staff, volunteers will learn to process birds and extract House Sparrows from nets
-* **Weeks 4-7**: Volunteers will be allowed to extract House Sparrows without staff guidance. Under the guidance of SMBC/NZP staff, volunteers will learn to process birds and learn to extract other species from nets
+* **Week 2**: Volunteers will observe processing of birds and learn to extract House Sparrows from nets under the guidance of NZP staff
+* **Week 3**: Under the guidance of NZP staff, volunteers will learn to process birds and extract House Sparrows from nets
+* **Weeks 4-7**: Volunteers will be allowed to extract House Sparrows without staff guidance. Under the guidance of NZP staff, volunteers will learn to process birds and learn to extract other species from nets
 * **Week 8**: The project manager will assess volunteer skill level. After this point, volunteers may require further extraction training or be allowed to extract birds on their own
 
-**Staffing needs**: This phase of the project will require two SMBC/NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day. Volunteers will assist with data entry and will be trained on the extraction of birds during by SMBC/NZP staff. 
+**Staffing needs**: This phase of the project will require two NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day. Volunteers will assist with data entry and will be trained on the extraction of birds during by NZP staff. 
 
 **Evaluation**: TBD
 
@@ -144,9 +144,9 @@ LATE-MORNING, AFTERNOON BANDING:
 **Equipment needs**: As above. 
 
 <img style="float: right; border:8px solid white" src="bobTeaching.jpg" width = '320'> 
-**Description of activity**: SMBC/NZP staff will conduct demonstration banding activites at banding stations (see map above). 
+**Description of activity**: NZP staff will conduct demonstration banding activites at banding stations (see map above). 
 
-**Staffing needs**: This phase of the project will require two SMBC/NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day.
+**Staffing needs**: This phase of the project will require two NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day.
 
 **Evaluation**: TBD
 
@@ -158,9 +158,9 @@ LATE-MORNING, AFTERNOON BANDING:
 
 **Equipment needs**: As above. 
 
-**Description of activity**: SMBC/NZP staff will conduct demonstration banding activites at banding stations (see map above). 
+**Description of activity**: NZP staff will conduct demonstration banding activites at banding stations (see map above). 
 
-**Staffing needs**: This phase of the project will require two SMBC/NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day. 
+**Staffing needs**: This phase of the project will require two NZP staff members per banding day to assist with extracting birds from nets and banding. We will require 2-4 volunteers and/or interns per banding day. 
 
 **Evaluation**: TBD
 

@@ -23,7 +23,7 @@ h3 { /* Header 1 */
 <hr>
 ### Phase I: Pilot program for bird banding operations at NZP
 
-**Effective Dates**: 12/01/2016 – 1/27/2017
+**Effective Dates**: 12/01/2016 - 1/27/2017
 
 **Goals**: This phase of the project will test the banding component of what will become the demonstration banding program for the general public held on zoo grounds. Here, we seek to set up potential net lanes and execute banding operations to evaluate:  
 
@@ -33,7 +33,7 @@ h3 { /* Header 1 */
 
 
 **Description of activity**:
-Banding operations will occur on Thursdays and Fridays of each week, weather permitting. We will not band during measurable precipitation events, during windy conditions (>4 on the Beaufort Scale, gusts of >19 miles per hour), or at temperatures below -2&deg;C (see Bander's Code of Ethics at [this link](https://www.pwrc.usgs.gov/BBl/resources/ethics.cfm)). During each banding day, 10-20 mist nets will be set up throughout the zoo grounds and will be open for roughly 6 hours per day (see below). Mist nets are 12 m long (some are 6 m) and are fastened at each end to aluminum conduit (height = 3 m). <img style="float: left; border:8px solid white" src="peteMistNet.jpg" width = '370'> Potter traps (see [this link](http://www.powdermillarc.org/highlights/2013/winter.aspx) for an example of a potter trap) may be used in conjunction with netting efforts in publically inaccessible locations and at feeding stations. All nets visible from the path will have a sign warning onlookers that it is illegal to touch the net for any reason (go to [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/zooBandingSign.png) to view or download the sign). It is prohibited for any individual (general public, volunteers, NZP staff) to attempt to extract birds from the net without the express permission of the project coordinator (Brian Evans, EvansBr@si.edu, 919-723-7907). Birds will be extracted during “net runs” (i.e., a circuit walked to check nets for captured birds), with nets checked every 30 minutes. If temperatures are at or below 0&deg;C, nets will be checked every 20 minutes and nets on runs greater than 0.5 km will be closed. A bird caught in net will be placed in a cloth bag and brought to a central location where it will be aged, sexed, measured (e.g., wing chord), banded with color bands and a USGS Aluminum band, and released. More information on the banding process and ensuring bird safety during banding operations is available at [this link](http://www.birdpop.org/docs/pubs/Smith_et_al_1997_Mist_Netters_Bird_Safety_Handbook.pdf).  
+Banding operations will occur on Thursdays and Fridays of each week, weather permitting. We will not band during measurable precipitation events, during windy conditions (>4 on the Beaufort Scale, gusts of >19 miles per hour), or at temperatures below -2&deg;C (see Bander's Code of Ethics at [this link](https://www.pwrc.usgs.gov/BBl/resources/ethics.cfm)). During each banding day, 10-20 mist nets will be set up throughout the zoo grounds and will be open for roughly 6 hours per day (see below). Mist nets are 12 m long (some are 6 m) and are fastened at each end to aluminum conduit (height = 3 m). <img style="float: left; border:8px solid white" src="peteMistNet.jpg" width = '370'> Potter traps (see [this link](http://www.powdermillarc.org/highlights/2013/winter.aspx) for an example of a potter trap) may be used in conjunction with netting efforts in publically inaccessible locations and at feeding stations. All nets visible from the path will have a sign warning onlookers that it is illegal to touch the net for any reason (go to [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/zooBandingSign.png) to view or download the sign). It is prohibited for any individual (general public, volunteers, NZP staff) to attempt to extract birds from the net without the express permission of the project coordinator (Brian Evans, EvansBr@si.edu, 919-723-7907). Birds will be extracted during "net runs" (i.e., a circuit walked to check nets for captured birds), with nets checked every 30 minutes. If temperatures are at or below 0&deg;C, nets will be checked every 20 minutes and nets on runs greater than 0.5 km will be closed. A bird caught in net will be placed in a cloth bag and brought to a central location where it will be aged, sexed, measured (e.g., wing chord), banded with color bands and a USGS Aluminum band, and released. More information on the banding process and ensuring bird safety during banding operations is available at [this link](http://www.birdpop.org/docs/pubs/Smith_et_al_1997_Mist_Netters_Bird_Safety_Handbook.pdf).  
 
 **Equipment needs**: The full banding equipment list is provided on a spreadsheet available at [this link](https://docs.google.com/spreadsheets/d/1lZfYova52vUKNAccVP1Yd8WZyTrK8EciHt9YnLnjn2U/edit#gid=0). We are requesting additional equipment for communication with the public, including: uniforms for NZP staff and name tags for NZP staff and volunteers. Additionally, we currently are maintaining three bird feeders on the grounds of the Science Building and request to place more feeders on zoo grounds to maximize catch rates. Finally, because some "net runs"" (i.e., a circuit walked to check nets for captured birds) may be considerably long, we would like to acquire a cart to drive between nets. If available, this cart will only be used before zoo grounds are open to the public.  
 
@@ -117,13 +117,13 @@ LATE-MORNING, AFTERNOON BANDING:
 
 ### Phase II:  Pilot program for training volunteers on bird banding activities
 
-**Effective Dates**: 02/03/2017 – 04/28/2017
+**Effective Dates**: 02/03/2017 - 04/28/2017
 
 **Goal**: This phase of the project will evaluate the feasibility of training/utilizing volunteers for extraction of birds from nets. Catch rates and the general efficacy of selected nets will continue to be evaluated.
 
 **Equipment needs**: As above. 
 
-**Description of activity**: NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection birds on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding, volunteers will be informed via email that their shift for that day has been cancelled. The full volunteer protocol document may be viewed at [this link](https://github.com/bsevansunc/birdCats/blob/master/NZPBanding_volunteerProtocols.pdf). The timeline for training includes: 
+**Description of activity**: NZP staff will conduct training of 4-6 volunteers or interns, each of whom are expected to volunteer one day per week. Volunteers and interns will be required to complete zoonosis training. Individuals may not interact with NZP collection birds on the day of trapping. If volunteers work for the Bird House, they are not to wear the same clothing worn for trapping to the Bird House. If the predicted weather conditions do not allow for banding, volunteers will be informed via email that their shift for that day has been cancelled. The full volunteer protocol document may be viewed at [this link](https://github.com/bsevansunc/birdCats/blob/master/smbc/nzpBanding_volunteerProtocols.pdf). The timeline for training includes: 
 
 * **Week 1**: Volunteers will observe extraction and processing of birds
 * **Week 2**: Volunteers will observe processing of birds and learn to extract House Sparrows from nets under the guidance of NZP staff
@@ -137,7 +137,7 @@ LATE-MORNING, AFTERNOON BANDING:
 
 ### Phase III: Pilot program for demonstration banding for the general public
 
-**Effective Dates**: 05/04/2017 – 06/16/2017
+**Effective Dates**: 05/04/2017 - 06/16/2017
 
 **Goal**: This phase of the project will evaluate the efficacy of banding demonstrations given to the general public (i.e., zoo-goers not associated with a formal group).
 
@@ -152,7 +152,7 @@ LATE-MORNING, AFTERNOON BANDING:
 
 ### Phase IV: Pilot program for demonstration banding for the groups
 
-**Effective Dates**: 06/22/2017 – 08/31/2017
+**Effective Dates**: 06/22/2017 - 08/31/2017
 
 **Goal**: This phase of the project will evaluate the efficacy of group banding demonstrations (e.g., FONZ classes).
 

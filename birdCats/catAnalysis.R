@@ -654,3 +654,82 @@ logLik(camImp2Can2Income)*(-2)
 #   theme(panel.grid = element_blank(), 
 #         axis.line.x = element_line(linetype='solid', color='black'),
 #         axis.line.y = element_line(linetype='solid', color='black'))
+
+# ----------------------------------------------------*
+# ---- Minimum number of individuals ----
+# ----------------------------------------------------*
+
+na.zero <- function(x){
+  x[is.na(x)] <- 0
+  return(x)
+}
+
+transInds <- catTransect %>%
+  filter(species == 'cat' & count == 1) %>%
+  select(site, notes) %>%
+  unique
+
+transInds$site <- as.character(transInds$site)
+transInds$notes <- as.character(transInds$notes)
+
+
+camInds <- catCam %>%
+  filter(species == 'cat' & count == 1) %>%
+  select(site, note) %>%
+  rename(notes = note) %>%
+  unique
+
+camInds$site <- as.character(camInds$site)
+camInds$notes <- as.character(camInds$notes)
+
+
+totalInds <- union(camInds, transInds) %>%
+  arrange(by = site) %>%
+  filter(notes != '')
+
+sites <- catSiteActivity %>%
+  select(site) %>%
+  unique
+
+totalIndsPerSite <- data.frame(table(totalInds$site)) %>%
+  rename(site = Var1, inds = Freq) %>%
+  full_join(sites, by = 'site') %>%
+  na.zero() %>%
+  arrange(by = site)
+
+camIndsPerSite <- data.frame(table(camInds$site)) %>%
+  rename(site = Var1, inds = Freq) %>%
+  full_join(sites, by = 'site') %>%
+  na.zero() %>%
+  arrange(by = site)
+
+transIndsPerSite <- data.frame(table(transInds$site)) %>%
+  rename(site = Var1, inds = Freq) %>%
+  full_join(sites, by = 'site') %>%
+  na.zero() %>%
+  arrange(by = site)
+
+indsPerSite <- left_join(totalIndsPerSite, camIndsPerSite, by = 'site') %>%
+  left_join(transIndsPerSite, by = 'site') %>%
+  rename(total = inds.x, camera = inds.y, transect = inds)
+
+# -------------*
+# ---- PLOT ----
+# -------------*
+
+sitesImp <- select(sitesWithCovs, site, imp)
+
+indsImpData <- indsPerSite %>%
+  left_join(sitesImp, by = 'site')
+
+indsImpData$site <- as.factor(indsImpData$site)
+
+ggplot(data = indsImpData, aes(x = imp, y = total))+
+  geom_point(size = 2)+
+  theme(panel.grid = element_blank(), 
+        axis.line.x = element_line(linetype='solid', color='black'),
+        axis.line.y = element_line(linetype='solid', color='black'))
+  
+  
+  
+  

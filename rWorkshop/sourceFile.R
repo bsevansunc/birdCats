@@ -4,21 +4,12 @@
 # ---- SET-UP ----
 #=================================================================================*
 
-install.packages(tidyverse)
-
-exists(tidyverse)
-
-
-smartRequire <- function(package){
-  if(!package %in% rownames(installed.packages())) {
-    install.packages(package)
+smartRequire <- function(packages){
+  # Get vector of packages listed that aren't on the current computer
+  packagesToInstall <- packages[!package %in% rownames(installed.packages())]
+  if(length(packagesToInstall > 0)){
+    install.packages(packagesToInstall, dependencies = TRUE)
   }
-  require(as.name(package), character.only = TRUE)
+  lapply(packages, require, character.only = TRUE)
 }
-
-libraries <- c('tidyverse', 'RCurl')
-
-for(i in 1:length(libraries)) smartRequire(libraries[i])
-
-lapply(list('tidyverse', 'RCurl'), smartRequire)
 

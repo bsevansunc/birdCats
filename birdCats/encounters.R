@@ -13,6 +13,13 @@ setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats')
 
 band <- read.csv('encBand.csv')
 part <- read.csv('encPart.csv')
+tech <- read.csv('encTech.csv')
+
+
+# New variables site and date from visitID in tech
+
+tech <- separate(tech, visitID, c('site', 'date'), '\\_')
+tech$site <- as.factor(tech$site)
 
 
 # Create column 'year' from band date
@@ -20,15 +27,20 @@ part <- read.csv('encPart.csv')
 band$date <- as.Date(band$date)
 band$year <- as.integer(format(band$date, '%Y'))
 
+tech$date <- as.Date(tech$date)
+tech$year <- as.integer(format(tech$date, '%Y'))
 
-# Arrange both dataframes by band number and year, and
+
+# Arrange dataframes by band number and year, and
 # make band numbers character strings
 
 band <- arrange(band, bandNumber, year)
 part <- arrange(part, birdID, yearResight)
+tech <- arrange(tech, birdID, year)
 
 band$bandNumber <- as.character(band$bandNumber)
 part$birdID <- as.character(part$birdID)
+tech$birdID <- as.character(tech$birdID)
 
 
 
@@ -49,6 +61,8 @@ band <- filter(
 
 part <- filter(part, !is.na(birdID))
 
+tech <- filter(tech, birdID != '-')
+
 
 
 # --------------------------------------------------------*
@@ -64,21 +78,20 @@ species <- c('AMRO', 'CACH', 'CARW', 'GRCA', 'HOWR', 'NOCA', 'NOMO', 'SOSP')
 
 a <- band %>%
   filter(speciesEnc %in% species) %>%
-  select(bandNumber, site, year)
+  select(bandNumber, year)
 
 b <- part %>%
-  select(birdID, siteID, yearResight) %>%
-  rename(bandNumber = birdID, site = siteID, year = yearResight)
+  select(birdID, yearResight) %>%
+  rename(bandNumber = birdID, year = yearResight)
 
-
-# Keep sites as a factor
-
-levels(b$site) <- levels(a$site)
+c <- tech %>%
+  select(birdID, year) %>%
+  rename(bandNumber = birdID)
 
 
 # Combine
 
-c <- bind_rows(a, b) %>%
+d <- bind_rows(list(a, b, c)) %>%
   arrange(bandNumber, year) %>%
   unique() %>%
   mutate(enc = 1)
@@ -89,7 +102,10 @@ c <- bind_rows(a, b) %>%
 # -------------- Create encounter history ----------------
 # --------------------------------------------------------*
 
-enc <- spread(c, year, enc, fill = 0)
+enc <- spread(d, year, enc, fill = 0)
 
 write.csv(enc, 'encounterHistory.csv', row.names = FALSE)
+
+
+
 

@@ -102,7 +102,21 @@ d <- bind_rows(list(a, b, c)) %>%
 # -------------- Create encounter history ----------------
 # --------------------------------------------------------*
 
-enc <- spread(d, year, enc, fill = 0)
+# Encounter history by individual
+
+encInd <- spread(d, year, enc, fill = 0) %>%
+  unite(ch, -bandNumber, sep = '') %>%
+  arrange(ch) %>%
+  select(ch)
+
+
+# Frequencies of encounter histories
+
+enc <- as.data.frame(table(encInd)) %>%
+  rename(ch = encInd, freq = Freq)
+
+
+# Write to .csv file
 
 write.csv(enc, 'encounterHistory.csv', row.names = FALSE)
 

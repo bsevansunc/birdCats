@@ -14,6 +14,7 @@ setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats')
 band <- read.csv('encBand.csv')
 part <- read.csv('encPart.csv')
 tech <- read.csv('encTech.csv')
+kb <- read.csv('encKB.csv')
 
 
 # New variables site and date from visitID in tech
@@ -30,6 +31,9 @@ band$year <- as.integer(format(band$date, '%Y'))
 tech$date <- as.Date(tech$date)
 tech$year <- as.integer(format(tech$date, '%Y'))
 
+kb$date <- as.Date(kb$date)
+kb$year <- as.integer(format(kb$date, '%Y'))
+
 
 # Arrange dataframes by band number and year, and
 # make band numbers character strings
@@ -37,10 +41,12 @@ tech$year <- as.integer(format(tech$date, '%Y'))
 band <- arrange(band, bandNumber, year)
 part <- arrange(part, birdID, yearResight)
 tech <- arrange(tech, birdID, year)
+kb <- arrange(kb, band, year)
 
 band$bandNumber <- as.character(band$bandNumber)
 part$birdID <- as.character(part$birdID)
 tech$birdID <- as.character(tech$birdID)
+kb$band <- as.character(kb$band)
 
 
 
@@ -62,6 +68,8 @@ band <- filter(
 part <- filter(part, !is.na(birdID))
 
 tech <- filter(tech, birdID != '-')
+
+kb <- filter(kb, band != '?')
 
 
 
@@ -88,10 +96,14 @@ c <- tech %>%
   select(birdID, year) %>%
   rename(bandNumber = birdID)
 
+d <- kb %>%
+  select(band, year) %>%
+  rename(bandNumber = band)
+
 
 # Combine
 
-d <- bind_rows(list(a, b, c)) %>%
+e <- bind_rows(list(a, b, c, d)) %>%
   arrange(bandNumber, year) %>%
   unique() %>%
   mutate(enc = 1)
@@ -104,7 +116,7 @@ d <- bind_rows(list(a, b, c)) %>%
 
 # Encounter history by individual
 
-encInd <- spread(d, year, enc, fill = 0) %>%
+encInd <- spread(e, year, enc, fill = 0) %>%
   unite(ch, -bandNumber, sep = '') %>%
   arrange(ch) %>%
   select(ch)

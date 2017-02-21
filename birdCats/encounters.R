@@ -6,75 +6,7 @@ setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats')
 
 
 # --------------------------------------------------------*
-# ---- Read in the data and preliminary manipulations ----
-# --------------------------------------------------------*
-
-# Read in the data
-
-band <- read.csv('encBand.csv')
-part <- read.csv('encPart.csv')
-tech <- read.csv('encTech.csv')
-kb <- read.csv('encKB.csv')
-
-
-# New variables site and date from visitID in tech
-
-tech <- separate(tech, visitID, c('site', 'date'), '\\_')
-tech$site <- as.factor(tech$site)
-
-
-# Create column 'year' from band date
-
-band$date <- as.Date(band$date)
-band$year <- as.integer(format(band$date, '%Y'))
-
-tech$date <- as.Date(tech$date)
-tech$year <- as.integer(format(tech$date, '%Y'))
-
-kb$date <- as.Date(kb$date)
-kb$year <- as.integer(format(kb$date, '%Y'))
-
-
-# Arrange dataframes by band number and year, and
-# make band numbers character strings
-
-band <- arrange(band, bandNumber, year)
-part <- arrange(part, birdID, yearResight)
-tech <- arrange(tech, birdID, year)
-kb <- arrange(kb, band, year)
-
-band$bandNumber <- as.character(band$bandNumber)
-part$birdID <- as.character(part$birdID)
-tech$birdID <- as.character(tech$birdID)
-kb$band <- as.character(kb$band)
-
-
-
-# --------------------------------------------------------*
-# -------- Fix errors and clean up the dataset -----------
-# --------------------------------------------------------*
-
-# Band entered incorrectly
-
-band[2745,6] <- '2711-77659'
-part[617,4] <- '2641-63884'
-
-
-# Remove NAs and tests
-
-band <- filter(
-  band, bandNumber != '-' & bandNumber != 't-estBn' & bandNumber != 'tes-tBand')
-
-part <- filter(part, !is.na(birdID))
-
-tech <- filter(tech, birdID != '-')
-
-kb <- filter(kb, band != '?')
-
-
-
-# --------------------------------------------------------*
-# --------- Subset to desired data and combine -----------
+# ----------- Read in and subset the data ----------------
 # --------------------------------------------------------*
 
 # Desired species
@@ -82,31 +14,70 @@ kb <- filter(kb, band != '?')
 species <- c('AMRO', 'CACH', 'CARW', 'GRCA', 'HOWR', 'NOCA', 'NOMO', 'SOSP')
 
 
-# Subset to desired columns
 
-a <- band %>%
+# Read in the data, subset banding data to site, date, species, band, age, and sex,
+# and subset the resight data to band number and date
+
+band <- read.csv('encBand.csv') %>%
+  select(bandNumber, site, date, speciesEnc, age, sex) %>%
+  arrange(bandNumber, date) %>%
+  lapply(gsub, pattern = 'UNK', replacement = 'U') %>%
+  data.frame() %>%
+  mutate(bandNumber = as.character(bandNumber)) %>%
+  filter(bandNumber != 't-estBn' & bandNumber != 'tes-tBand' & !is.na(bandNumber)) %>%
   filter(speciesEnc %in% species) %>%
-  select(bandNumber, year)
+  unique()
 
-b <- part %>%
+part <- read.csv('encPart.csv') %>%
   select(birdID, yearResight) %>%
-  rename(bandNumber = birdID, year = yearResight)
+  arrange(birdID, yearResight) %>%
+  rename(bandNumber = birdID, year = yearResight) %>%
+  mutate(bandNumber = as.character(bandNumber)) %>%
+  filter(!is.na(bandNumber)) %>%
+  unique()
 
-c <- tech %>%
-  select(birdID, year) %>%
-  rename(bandNumber = birdID)
+tech <- read.csv('encTech.csv') %>%
+  separate(visitID, c('site', 'date'), '\\_') %>%
+  select(birdID, date) %>%
+  arrange(birdID, date) %>%
+  rename(bandNumber = birdID) %>%
+  mutate(bandNumber = as.character(bandNumber)) %>%
+  filter(bandNumber != '-') %>%
+  unique()
 
-d <- kb %>%
-  select(band, year) %>%
-  rename(bandNumber = band)
+kb <- read.csv('encKB.csv') %>%
+  filter(site != 'OLONMARDC1' & site != 'WOLFKARDC1' & 
+         site != 'WOLFAMYDC1' & site != 'GERYERIMD1') %>%
+  select(band, date) %>%
+  arrange(band, date) %>%
+  rename(bandNumber = band) %>%
+  mutate(bandNumber = as.character(bandNumber)) %>%
+  filter(bandNumber != '?') %>%
+  unique()
+
+
+# Create column 'year' from band date
+
+band$date <- as.Date(band$date)
+band$year <- as.integer(format(band$date, '%Y'))
+band$date <- NULL
+
+tech$date <- as.Date(tech$date)
+tech$year <- as.integer(format(tech$date, '%Y'))
+tech$date <- NULL
+
+kb$date <- as.Date(kb$date)
+kb$year <- as.integer(format(kb$date, '%Y'))
+kb$date <- NULL
 
 
 # Combine
 
-e <- bind_rows(list(a, b, c, d)) %>%
+all <- bind_rows(list(band, tech, part, kb)) %>%
   arrange(bandNumber, year) %>%
-  unique() %>%
-  mutate(enc = 1)
+  select(bandNumber, year) %>%
+  mutate(enc = 1) %>%
+  unique()
 
 
 
@@ -114,18 +85,17 @@ e <- bind_rows(list(a, b, c, d)) %>%
 # -------------- Create encounter history ----------------
 # --------------------------------------------------------*
 
-# Encounter history by individual
 
-encInd <- spread(e, year, enc, fill = 0) %>%
+# Spread to encounter history by individual, 
+# then get frequencies of each encounter history
+
+enc <- spread(all, year, enc, fill = 0) %>%
   unite(ch, -bandNumber, sep = '') %>%
   arrange(ch) %>%
-  select(ch)
-
-
-# Frequencies of encounter histories
-
-enc <- as.data.frame(table(encInd)) %>%
-  rename(ch = encInd, freq = Freq)
+  select(ch) %>%
+  table() %>%
+  data.frame() %>%
+  setNames(c('ch', 'freq'))
 
 
 # Write to .csv file

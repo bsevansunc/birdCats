@@ -33,6 +33,7 @@ band <- read_csv('encBand.csv') %>%
     year != 2016,
     !site %in% removeSites
     ) %>%
+  select(-c(notesEnc, timeEnc, colorCombo)) %>%
   select(bandNumber, site, year, speciesEnc, age, sex) %>%
   distinct
 
@@ -92,12 +93,5 @@ captureHistories <- bind_rows(
 
 # Make data frame that includes capture histories, groups, and covariates:
 
-birdData <- left_join(bandRecap,captureHistories, by = 'bandNumber') %>%
+birdData <- left_join(band,captureHistories, by = 'bandNumber') %>%
   rename(bandYear = year)
-
-
-
-
-
-
-

@@ -1,9 +1,6 @@
-library('dplyr')
-library('tidyr')
-
-setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats')
-
-
+library('tidyverse')
+library('stringr')
+library('lubridate')
 
 # --------------------------------------------------------*
 # ----------- Read in and subset the data ----------------
@@ -11,96 +8,95 @@ setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats')
 
 # Desired species
 
-species <- c('AMRO', 'CACH', 'CARW', 'GRCA', 'HOWR', 'NOCA', 'NOMO', 'SOSP')
+species <- c('AMRO', 'CACH', 'CARW', 'GRCA',
+             'HOWR', 'NOCA', 'NOMO', 'SOSP')
+
+# Sites to remove from analyses:
+
+removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1')
 
 
+# Read in banding and recap data, filter to observations with band number, 
+# band encounters, and birds banded before 2016. Subset columns to
+# bandNumber, site, year, species, age, and sex:
 
-# Read in the data, subset banding data to site, date, species, band, age, and sex,
-# and subset the resight data to band number and date
-
-band <- read.csv('encBand.csv') %>%
-  select(bandNumber, site, date, speciesEnc, age, sex) %>%
+band <- read_csv('encBand.csv') %>%
   arrange(bandNumber, date) %>%
-  lapply(gsub, pattern = 'UNK', replacement = 'U') %>%
-  data.frame() %>%
-  mutate(bandNumber = as.character(bandNumber)) %>%
-  filter(bandNumber != 't-estBn' & bandNumber != 'tes-tBand' & !is.na(bandNumber)) %>%
-  filter(speciesEnc %in% species) %>%
-  unique()
+  mutate(age = str_replace_all(age, 'UNK', 'U'),
+         sex = str_replace_all(sex, 'UNK', 'U'),
+         year = year(date)) %>%
+  filter(
+    str_detect(bandNumber, '[0-9]{3}-[0-9]{5}')|
+      str_detect(bandNumber, '[0-9]{4}-[0-9]{5}'),
+    speciesEnc %in% species,
+    encounterType == 'Band',
+    year != 2016,
+    !site %in% removeSites
+    ) %>%
+  select(bandNumber, site, year, speciesEnc, age, sex) %>%
+  distinct
 
-part <- read.csv('encPart.csv') %>%
-  select(birdID, yearResight) %>%
-  arrange(birdID, yearResight) %>%
-  rename(bandNumber = birdID, year = yearResight) %>%
-  mutate(bandNumber = as.character(bandNumber)) %>%
-  filter(!is.na(bandNumber)) %>%
-  unique()
+# Read in banding and recap data, filter observations without a band number, 
+# recap encounters only, and subset columns to bandNumber and year:
 
-tech <- read.csv('encTech.csv') %>%
-  separate(visitID, c('site', 'date'), '\\_') %>%
-  select(birdID, date) %>%
-  arrange(birdID, date) %>%
-  rename(bandNumber = birdID) %>%
-  mutate(bandNumber = as.character(bandNumber)) %>%
-  filter(bandNumber != '-') %>%
-  unique()
-
-kb <- read.csv('encKB.csv') %>%
-  filter(site != 'OLONMARDC1' & site != 'WOLFKARDC1' & 
-         site != 'WOLFAMYDC1' & site != 'GERYERIMD1') %>%
-  select(band, date) %>%
-  arrange(band, date) %>%
-  rename(bandNumber = band) %>%
-  mutate(bandNumber = as.character(bandNumber)) %>%
-  filter(bandNumber != '?') %>%
-  unique()
-
-
-# Create column 'year' from band date
-
-band$date <- as.Date(band$date)
-band$year <- as.integer(format(band$date, '%Y'))
-band$date <- NULL
-
-tech$date <- as.Date(tech$date)
-tech$year <- as.integer(format(tech$date, '%Y'))
-tech$date <- NULL
-
-kb$date <- as.Date(kb$date)
-kb$year <- as.integer(format(kb$date, '%Y'))
-kb$date <- NULL
-
-
-# Combine
-
-all <- bind_rows(list(band, tech, part, kb)) %>%
-  arrange(bandNumber, year) %>%
+recap <- read_csv('encBand.csv') %>%
+  arrange(bandNumber, date) %>%
+  mutate(year = year(date)) %>%
+  filter(bandNumber %in% band$bandNumber) %>%
   select(bandNumber, year) %>%
+  distinct
+
+# Read in participant resights, filter to band numbers in band data, and
+# subset columns to bandNumber and year of resight:
+
+partResight <- read_csv('encPart.csv') %>%
+  filter(birdID %in% band$bandNumber) %>%
+  # The below ensures that resights are roughly 1 year after capture:
+  mutate(yearResight = ifelse(month(dateResight) < 4,
+                              yearResight -1, yearResight)) %>%
+  arrange(birdID, yearResight) %>%
+  transmute(bandNumber = birdID, year = yearResight) %>%
+  distinct
+
+# Read in technician resights, filter to band numbers in band data, and
+# subset columns to bandNumber and year of resight:
+
+techResight <- read_csv('encTech.csv') %>%
+  separate(visitID, c('site', 'date'), '\\_') %>%
+  filter(birdID %in% bandRecap$bandNumber) %>%
+  transmute(bandNumber = birdID,
+            year = year(date)) %>%
+  arrange(bandNumber, year) %>%
+  distinct
+
+# Read in K. Bennet resights, filter to band numbers in band data, and
+# subset columns to bandNumber and year of resight:
+
+kbResight <- read_csv('encKB.csv') %>%
+  filter(band %in% bandRecap$bandNumber) %>%
+  transmute(bandNumber = band,
+            year = year(date)) %>%
+  arrange(bandNumber, year) %>%
+  distinct
+  
+# Combine all encounter types to make capture history frame:
+
+captureHistories <- bind_rows(
+  band %>% select(bandNumber, year),
+  recap, partResight, techResight, kbResight) %>%
+  arrange(bandNumber, year) %>%
   mutate(enc = 1) %>%
-  unique()
+  distinct %>%
+  spread(key = year, value = enc, fill = 0) %>%
+  unite(ch, -bandNumber, sep = '')
+
+# Make data frame that includes capture histories, groups, and covariates:
+
+birdData <- left_join(bandRecap,captureHistories, by = 'bandNumber') %>%
+  rename(bandYear = year)
 
 
 
-# --------------------------------------------------------*
-# -------------- Create encounter history ----------------
-# --------------------------------------------------------*
-
-
-# Spread to encounter history by individual, 
-# then get frequencies of each encounter history
-
-enc <- spread(all, year, enc, fill = 0) %>%
-  unite(ch, -bandNumber, sep = '') %>%
-  arrange(ch) %>%
-  select(ch) %>%
-  table() %>%
-  data.frame() %>%
-  setNames(c('ch', 'freq'))
-
-
-# Write to .csv file
-
-write.csv(enc, 'encounterHistory.csv', row.names = FALSE)
 
 
 

@@ -15,7 +15,7 @@ species <- c('AMRO', 'CACH', 'CARW', 'GRCA',
 
 # Sites to remove from analyses:
 
-removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1')
+removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC1')
 
 
 # Read in banding and recap data, filter to observations with band number, 
@@ -153,19 +153,34 @@ band <- left_join(band, bciDf, by = 'bandNumber')
 
 
 # -------------------------------------------------------*
-# ----------- Add impervious surface variable -----------
+# ----------- Add urbanization variables -----------
 # -------------------------------------------------------*
 
 # Read in data
 
-imp <- read_csv('data/covariateData.csv') %>%
-  select(site, imp) %>%
+urban <- read_csv('data/covariateData.csv') %>%
+  select(site, imp, can) %>%
   filter(site %in% band$site)
 
 
 # Add to band dataframe with other covariates
 
-band <- left_join(band, imp, by = 'site')
+band <- left_join(band, urban, by = 'site')
+
+
+# ------------------------------------------------------------------*
+# ---------------- Add cat variables -------------------------------
+# ------------------------------------------------------------------*
+
+# Read in data
+
+catAbund <- read.csv('data/catAbund.csv')
+
+
+# Add to band dataframe with other covariates
+
+band <- left_join(band, catAbund, by = 'site')
+
 
 
 # --------------------------------------------------------------------*

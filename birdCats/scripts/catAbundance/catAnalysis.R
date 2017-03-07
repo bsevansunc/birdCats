@@ -30,19 +30,19 @@ options(stringsAsFactors = F)
 # ---- Get data ----
 # ---------------------------------------------------------------------------------*
 
-catSiteActivity <- read.csv('catDataActivity.csv') %>%
+catSiteActivity <- read.csv('data/catDataActivity.csv') %>%
   tbl_df
 
-catCam <- read.csv('catDataCamera.csv') %>%
+catCam <- read.csv('data/catDataCamera.csv') %>%
   tbl_df %>%
   filter(!is.na(species)) %>%
   filter(!is.na(cameraID))
 
-catSites <- read.csv('catSiteData.csv') %>%
+catSites <- read.csv('data/catSiteData.csv') %>%
   tbl_df %>%
   select(site)
 
-catTransect <- read.csv('catDataTransect.csv') %>%
+catTransect <- read.csv('data/catDataTransect.csv') %>%
   tbl_df %>%
   filter(!is.na(count)) %>%
   filter(species == 'cat') %>%
@@ -54,7 +54,7 @@ catTransect <- read.csv('catDataTransect.csv') %>%
          visit = as.factor(visit)) %>%
   arrange(site)
 
-covs <- read.csv('covariateData.csv') %>%
+covs <- read.csv('data/covariateData.csv') %>%
   tbl_df %>%
   arrange(site)
 
@@ -166,7 +166,7 @@ gUmfWithCovs <- unmarkedFrameGDS(
 
 
 # ---------------------------------------------------------------------------------*
-# ----Transect model fitting----
+# ---- Transect model fitting ----
 # ---------------------------------------------------------------------------------*
 
 # gdistsamp
@@ -203,7 +203,7 @@ mImp2Income <- gdistsamp(
   phiformula = ~ scale(time),
   pformula = ~ scale(dew) * scale(temp) + scale(time),
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density', unitsOut = 'ha', 
+  keyfun = "halfnorm", output = 'abund', unitsOut = 'ha', 
   mixture="P")
 
 
@@ -317,11 +317,12 @@ mImpIncome <- gdistsamp(
   unitsOut = 'ha', mixture="NB")
 
 
-# -----------------*
-# ---- Density ----
-# -----------------*
+# -------------------*
+# ---- Abundance ----
+# -------------------*
 
-transDensity <- predict(mImp2Income, type="lambda", appenddata = TRUE)
+transAbund <- predict(mImp2Income, type="lambda", appenddata = TRUE)
+
 
 
 # ----------------------------------------------------------------*
@@ -405,26 +406,23 @@ plot(inc, dens)
 
 # Create detection history for each site:
 
-umfCam <- read.csv('catCamDetection.csv') %>%
+umfCam <- read.csv('data/catCamDetection.csv') %>%
   data.frame
 
 
 # Get abundance covariates for the camera-only sites
 
+removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC1')
+
 camCovs <- covs %>%
-  filter(
-    site != 'GERYERIMD1' &
-    site != 'OLONMARDC1' &
-    site != 'MISSEDDC1' &
-    site != 'WOLFKARDC1' &
-    site != 'WOLFAMYDC1'
-  ) %>%
+  filter(!site %in% removeSites) %>%
   data.frame
 
 
 # Get detection covariates
 
-camDetCovs <- read.csv('camDetCovs.csv') %>%
+camDetCovs <- read.csv('data/camDetCovs.csv') %>%
+  filter(!site %in% removeSites) %>%
   select(site, day, tempHigh, tempLow, dewLow)
 
 
@@ -438,7 +436,7 @@ camUmfWithCovs <- unmarkedFramePCount(
 
 
 # ---------------------------------------------------------------------------------*
-# ----Cam model fitting----
+# ---- Cam model fitting ----
 #----------------------------------------------------------------------------------*
 
 
@@ -536,13 +534,11 @@ camImp2Can2 <- pcount(
   K = 50)
 
 
-# -----------------*
-# ---- Density ----
-# -----------------*
+# -------------------*
+# ---- Abundance ----
+# -------------------*
 
-camDensity <- predict(camCan2, type = 'state') %>%
-  select(Predicted) %>%
-  data.frame
+camAbund <- predict(camCan2, type = 'state')
 
 
 # -------------------------------------------------*
@@ -596,6 +592,39 @@ logLik(camImp2Can2)*(-2)
 logLik(camImp2Can)*(-2)
 logLik(camCan2Imp)*(-2)
 logLik(camImp2Can2Income)*(-2)
+
+
+# ---------------------------------------*
+# ----- Combine abundance estimates -----
+# ---------------------------------------*
+
+# Create dataframe of camera sites and abundances
+
+camSiteAbund <- sitesWithCovs %>%
+  filter(!site %in% removeSites) %>%
+  mutate(cCats = camAbund$Predicted) %>%
+  select(site, cCats)
+
+
+# Read in minimum individual data
+
+minInd <- read.csv('data/catMinIndividuals.csv') %>%
+  select(site, mCats)
+
+
+# Create dataframe of transect sites and predicted abundances
+
+siteAbund <- sitesWithCovs %>%
+  select(site) %>%
+  mutate(tCats = transAbund$Predicted) %>%
+  left_join(camSiteAbund, by = 'site') %>%
+  left_join(minInd, by = 'site')
+
+
+# Write to csv file for use in survival analysis
+
+write.csv(siteAbund, 'data/catAbund.csv', row.names = FALSE)
+
 
 
 

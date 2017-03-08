@@ -244,3 +244,7 @@ captureHistories <- captureHistories %>%
 
 birdData <- left_join(band,captureHistories, by = 'bandNumber') %>%
   rename(bandDate = date, bandYear = year)
+
+# Writes to file for survival analysis
+
+write.csv(birdData, 'data/ch.csv', row.names = FALSE)

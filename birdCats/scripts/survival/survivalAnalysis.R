@@ -4,35 +4,143 @@ library('stringr')
 
 # Read in data
 
-bird <- read_csv('data/ch.csv')
+data <- read.csv('data/ch.csv')
 
 
-# Temporary bird2 frame for tests
-bird2 <- bird %>%
-  select(imp,tCats,sex,ch)
+# Filter out individuals of unknown sex and body condition, add imp^2
+bird <- data %>%
+  mutate(imp2 = imp^2) %>%
+  filter(!is.na(bci)) %>%
+  filter(sex != 'U')
 
 # Remove active/inactive designation
-bird2$ch <- str_replace_all(bird2$ch, '[.]', 0)
+bird$ch <- str_replace_all(bird$ch, '[.]', 0)
 
-# Set sex as a factor with levels 'M', 'F', and 'U'
-bird2$sex <- as.factor(bird2$sex)
+# Set sex as a factor with levels 'M' and 'F'
+bird$sex <- as.factor(bird$sex)
 
-# Model only runs with 65 unique capture histories or fewer 
-# (with the data subset to these variables, 73 rows collapses to 65 histories)
-bird2 <- bird2[1:73,]
+# By species
+amro <- bird %>% filter(speciesEnc == 'AMRO')
+cach <- bird %>% filter(speciesEnc == 'CACH')
+carw <- bird %>% filter(speciesEnc == 'CARW')
+grca <- bird %>% filter(speciesEnc == 'GRCA')
+howr <- bird %>% filter(speciesEnc == 'HOWR')
+noca <- bird %>% filter(speciesEnc == 'NOCA')
+nomo <- bird %>% filter(speciesEnc == 'NOMO')
+sosp <- bird %>% filter(speciesEnc == 'SOSP')
+
 
 # Process the data
-bird.proc <- process.data(bird2)
+all.proc <- process.data(bird, groups = "sex")
+
+amro.proc <- process.data(amro, groups = "sex")
+cach.proc <- process.data(cach, groups = "sex")
+carw.proc <- process.data(carw, groups = "sex")
+grca.proc <- process.data(grca, groups = "sex")
+howr.proc <- process.data(howr, groups = "sex")
+noca.proc <- process.data(noca, groups = "sex")
+nomo.proc <- process.data(nomo, groups = "sex")
+sosp.proc <- process.data(sosp, groups = "sex")
+
 
 # Design parameters
-design.Phi <- list(static = c('imp', 'tCats', 'sex'))
+design.Phi <- list(static = c('imp','sex','bci','tCats','cCats','mCats','imp2'))
 design.p <- list(static = c('sex'))
 design.parameters <- list(Phi = design.Phi, p = design.p)
 
-bird.ddl <- make.design.data(bird.proc, parameters = design.parameters)
+all.ddl <- make.design.data(all.proc, parameters = design.parameters)
+
+amro.ddl <- make.design.data(amro.proc, parameters = design.parameters)
+cach.ddl <- make.design.data(cach.proc, parameters = design.parameters)
+carw.ddl <- make.design.data(carw.proc, parameters = design.parameters)
+grca.ddl <- make.design.data(grca.proc, parameters = design.parameters)
+howr.ddl <- make.design.data(howr.proc, parameters = design.parameters)
+noca.ddl <- make.design.data(noca.proc, parameters = design.parameters)
+nomo.ddl <- make.design.data(nomo.proc, parameters = design.parameters)
+sosp.ddl <- make.design.data(sosp.proc, parameters = design.parameters)
 
 # Model parameters
-Phi.test <- list(formula = ~imp+tCats+sex+imp*tCats+sex*tCats+imp^2)
-p.dot <- list(formula = ~1)
+Phi.dot <- list(formula = ~1)
+Phi.noCats <- list(formula = ~imp+sex+bci+sex*bci+imp2)
+Phi.tCats <- list(formula = ~imp+tCats+sex+bci+bci*tCats+sex*tCats+sex*bci+imp2)
+Phi.cCats <- list(formula = ~imp+cCats+sex+bci+bci*cCats+sex*cCats+sex*bci+imp2)
+Phi.mCats <- list(formula = ~imp+mCats+sex+bci+bci*mCats+sex*mCats+sex*bci+imp2)
 
-model.test <- crm(bird.proc, ddl, model.parameters = list(Phi = Phi.test, p = p.dot))
+p.dot <- list(formula = ~1)
+p.sex <- list(formula = ~sex)
+
+# Models
+# Combined species
+all.null <- crm(data=all.proc, ddl=all.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+all.tCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
+  Phi=Phi.tCats, p=p.sex))
+
+all.cCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+all.mCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
+  Phi=Phi.mCats, p=p.sex))
+
+all.noCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
+  Phi=Phi.noCats, p=p.sex))
+
+# NOCA
+noca.null <- crm(data=noca.proc, ddl=noca.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+noca.cCats <- crm(data=noca.proc, ddl=noca.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# CACH
+cach.null <- crm(data=cach.proc, ddl=cach.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+cach.cCats <- crm(data=cach.proc, ddl=cach.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# CARW
+carw.null <- crm(data=carw.proc, ddl=carw.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+carw.cCats <- crm(data=carw.proc, ddl=carw.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# GRCA
+grca.null <- crm(data=grca.proc, ddl=grca.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+grca.cCats <- crm(data=grca.proc, ddl=grca.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# HOWR
+howr.null <- crm(data=howr.proc, ddl=howr.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+howr.cCats <- crm(data=howr.proc, ddl=howr.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# SOSP
+sosp.null <- crm(data=sosp.proc, ddl=sosp.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+sosp.cCats <- crm(data=sosp.proc, ddl=sosp.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# AMRO
+amro.null <- crm(data=amro.proc, ddl=amro.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+amro.cCats <- crm(data=amro.proc, ddl=amro.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+# NOMO
+nomo.null <- crm(data=nomo.proc, ddl=nomo.ddl, model.parameters = list(
+  Phi = Phi.dot, p = p.sex))
+
+nomo.cCats <- crm(data=nomo.proc, ddl=nomo.ddl, model.parameters=list(
+  Phi=Phi.cCats, p=p.sex))
+
+
+

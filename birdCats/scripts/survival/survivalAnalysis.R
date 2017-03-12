@@ -4,20 +4,20 @@ library('stringr')
 
 # Read in data
 
-data <- read.csv('data/ch.csv')
+data <- read_csv('data/ch.csv')
 
 
 # Filter out individuals of unknown sex and body condition, add imp^2
 bird <- data %>%
   mutate(imp2 = imp^2) %>%
   filter(!is.na(bci)) %>%
-  filter(sex != 'U')
+  filter(sex != 'U') %>%
+  as.data.frame
 
-# Remove active/inactive designation
-bird$ch <- str_replace_all(bird$ch, '[.]', 0)
 
 # Set sex as a factor with levels 'M' and 'F'
 bird$sex <- as.factor(bird$sex)
+
 
 # By species
 amro <- bird %>% filter(speciesEnc == 'AMRO')
@@ -45,7 +45,7 @@ sosp.proc <- process.data(sosp, groups = "sex")
 
 # Design parameters
 design.Phi <- list(static = c('imp','sex','bci','tCats','cCats','mCats','imp2'))
-design.p <- list(static = c('sex'))
+design.p <- list(static = c('sex'), time.varying = c("active"))
 design.parameters <- list(Phi = design.Phi, p = design.p)
 
 all.ddl <- make.design.data(all.proc, parameters = design.parameters)
@@ -68,23 +68,24 @@ Phi.mCats <- list(formula = ~imp+mCats+sex+bci+bci*mCats+sex*mCats+sex*bci+imp2)
 
 p.dot <- list(formula = ~1)
 p.sex <- list(formula = ~sex)
+p.sa <- list(formula = ~sex+active)
 
 # Models
 # Combined species
 all.null <- crm(data=all.proc, ddl=all.ddl, model.parameters = list(
-  Phi = Phi.dot, p = p.sex))
+  Phi = Phi.dot, p = p.sa))
 
 all.tCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
-  Phi=Phi.tCats, p=p.sex))
+  Phi=Phi.tCats, p=p.sa))
 
 all.cCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
-  Phi=Phi.cCats, p=p.sex))
+  Phi=Phi.cCats, p=p.sa))
 
 all.mCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
-  Phi=Phi.mCats, p=p.sex))
+  Phi=Phi.mCats, p=p.sa))
 
 all.noCats <- crm(data=all.proc, ddl=all.ddl, model.parameters=list(
-  Phi=Phi.noCats, p=p.sex))
+  Phi=Phi.noCats, p=p.sa))
 
 # NOCA
 noca.null <- crm(data=noca.proc, ddl=noca.ddl, model.parameters = list(

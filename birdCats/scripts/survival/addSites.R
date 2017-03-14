@@ -2,6 +2,10 @@ library(RCurl)
 library(stringr)
 library(tidyverse)
 
+u <- getURL(
+  'https://raw.githubusercontent.com/bsevansunc/nnPowerAnalysis/master/nnData/birdTable.csv'
+)
+
 x <- getURL(
   'https://raw.githubusercontent.com/bsevansunc/nnPowerAnalysis/master/nnData/captureTable.csv'
   )
@@ -14,56 +18,83 @@ z <- getURL(
   'https://raw.githubusercontent.com/bsevansunc/birdCats/master/birdCats/data/catDataTransect.csv'
 )
 
-sites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC1')
+v <- getURL(
+  'https://raw.githubusercontent.com/bsevansunc/nnPowerAnalysis/master/nnData/resightPartTable.csv'
+)
+
+w <- getURL(
+  'https://raw.githubusercontent.com/bsevansunc/nnPowerAnalysis/master/nnData/resightTechTable.csv'
+)
+
+sites <- read.csv('data/catDataTransect.csv')$site
 
 
-addBand <- read.csv(text = x) %>%
+getBand <- read.csv(text = x) %>%
   separate(visitID, c('site', 'date'), '\\_') %>%
   filter(
     str_detect(date, '[0-9]{4}-[0-9]{2}-[0-9]{2}'),
     site %in% sites,
-    str_detect(birdID, '[0-9]{3}-[0-9]{5}')|
-      str_detect(birdID, '[0-9]{4}-[0-9]{5}'),
+    str_detect(bandNumber, '[0-9]{3}-[0-9]{5}')|
+      str_detect(bandNumber, '[0-9]{4}-[0-9]{5}'),
     typeCapture== 'Band') %>%
-  mutate(birdID = as.character(birdID)) %>%
-  arrange(birdID) %>%
-  select(birdID, site, date, typeCapture, age, sex) %>%
+  mutate(year = year(date)) %>%
+  filter(year != 2016) %>%
+  arrange(bandNumber) %>%
+  select(bandNumber, site, date, age, sex) %>%
   distinct
 
-addRecap <- read.csv(text = x) %>%
+getRecap <- read.csv(text = x) %>%
   separate(visitID, c('site', 'date'), '\\_') %>%
-  mutate(birdID = as.character(birdID)) %>%
   filter(
     str_detect(date, '[0-9]{4}-[0-9]{2}-[0-9]{2}'),
     site %in% sites,
-    str_detect(birdID, '[0-9]{3}-[0-9]{5}')|
-      str_detect(birdID, '[0-9]{4}-[0-9]{5}'),
+    str_detect(bandNumber, '[0-9]{3}-[0-9]{5}')|
+      str_detect(bandNumber, '[0-9]{4}-[0-9]{5}'),
     typeCapture == 'Recap') %>%
-  arrange(birdID) %>%
-  select(birdID, site, date, typeCapture) %>%
+  arrange(bandNumber) %>%
+  select(bandNumber, site, date) %>%
   distinct
 
-birdIDs <- distinct(select(addBand,birdID))[,1]
-
-addMeas <- read.csv(text = y) %>%
+getMeas <- read.csv(text = y) %>%
+  mutate(bandNumber = birdID) %>%
   separate(visitID, c('site', 'date'), '\\_') %>%
-  mutate(birdID = as.character(birdID)) %>%
   filter(str_detect(date, '[0-9]{4}-[0-9]{2}-[0-9]{2}'),
          site %in% sites,
-         str_detect(birdID, '[0-9]{3}-[0-9]{5}')|
-           str_detect(birdID, '[0-9]{4}-[0-9]{5}'),
+         str_detect(bandNumber, '[0-9]{3}-[0-9]{5}')|
+           str_detect(bandNumber, '[0-9]{4}-[0-9]{5}'),
          !is.na(mass) & !is.na(wing),
-         birdID %in% birdIDs) %>%
-  arrange(birdID,date) %>%
-  select(birdID, mass, wing) %>%
-  distinct(birdID,.keep_all = TRUE)
+         bandNumber %in% getBand$bandNumber) %>%
+  arrange(bandNumber,date) %>%
+  select(bandNumber, mass, wing) %>%
+  distinct(bandNumber,.keep_all = TRUE)
 
-addBandMeas <- addBand %>%
-  left_join(addMeas, by='birdID') %>%
+
+spp <- read.csv(text=u) %>%
+  select(bandNumber,species) %>%
+  filter(bandNumber %in% getBand$bandNumber) %>%
   distinct
 
-write.csv(addRecap, 'data/addRecap.csv')
-write.csv(addBandMeas, 'data/addBand.csv')
+
+bandMeas <- getBand %>%
+  left_join(getMeas, by='bandNumber') %>%
+  left_join(spp, by='bandNumber') %>%
+  distinct
+
+
+getPart <- read.csv(text = v) %>%
+  filter(siteID %in% sites) %>%
+  select(siteID, birdID, dateResight)
+
+getTech <- read.csv(text = w) %>%
+  separate(visitID, c('site', 'date'), '\\_') %>%
+  filter(site %in% sites) %>%
+  select(site,date,birdID)
+
+
+write.csv(getRecap, 'data/encRecap.csv',row.names = FALSE)
+write.csv(bandMeas, 'data/encBand.csv',row.names = FALSE)
+write.csv(getPart, 'data/encPart.csv',row.names = FALSE)
+write.csv(getTech, 'data/encTech.csv',row.names = FALSE)
 
 
 

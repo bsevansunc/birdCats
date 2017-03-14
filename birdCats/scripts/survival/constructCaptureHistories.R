@@ -18,35 +18,22 @@ species <- c('AMRO', 'CACH', 'CARW', 'GRCA',
 removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC1')
 
 
-# Read in banding and recap data, filter to observations with band number, 
-# band encounters, and birds banded before 2016. Subset columns to
-# bandNumber, site, year, species, age, and sex:
+# Read in banding data
 
 band <- read_csv('data/encBand.csv') %>%
   arrange(bandNumber, date) %>%
   mutate(age = str_replace_all(age, 'UNK', 'U'),
          sex = str_replace_all(sex, 'UNK', 'U'),
          year = year(date)) %>%
-  filter(
-    str_detect(bandNumber, '[0-9]{3}-[0-9]{5}')|
-      str_detect(bandNumber, '[0-9]{4}-[0-9]{5}'),
-    speciesEnc %in% species,
-    encounterType == 'Band',
-    year != 2016,
-    !site %in% removeSites
-    ) %>%
-  select(-c(observerEnc, encounterType, colorCombo, notesEnc:timeEnc)) %>%
+  filter(species %in% species) %>%
   distinct
 
 
-# Read in banding and recap data, filter observations without a band number, 
-# recap encounters only, and subset columns to bandNumber and year:
+# Read in recap data. Subset columns to bandNumber, site, and year:
 
 recap <- read_csv('data/encBand.csv') %>%
   arrange(bandNumber, date) %>%
   mutate(year = year(date)) %>%
-  filter(bandNumber %in% band$bandNumber,
-         encounterType == 'Recap') %>%
   select(bandNumber, year, site) %>%
   distinct
 
@@ -57,8 +44,10 @@ recap <- read_csv('data/encBand.csv') %>%
 partResight <- read_csv('data/encPart.csv') %>%
   filter(birdID %in% band$bandNumber) %>%
   # The below ensures that resights are roughly 1 year after capture:
-  mutate(yearResight = ifelse(month(dateResight) < 4,
-                              yearResight -1, yearResight)) %>%
+  mutate(
+    yearResight = year(dateResight),
+    yearResight = ifelse(month(dateResight) < 4,
+                         yearResight -1, yearResight)) %>%
   arrange(birdID, yearResight) %>%
   transmute(site = siteID, bandNumber = birdID, year = yearResight) %>%
   distinct
@@ -68,7 +57,6 @@ partResight <- read_csv('data/encPart.csv') %>%
 # subset columns to bandNumber and year of resight:
 
 techResight <- read_csv('data/encTech.csv') %>%
-  separate(visitID, c('site', 'date'), '\\_') %>%
   filter(birdID %in% band$bandNumber) %>%
   transmute(site = site, bandNumber = birdID, year = year(date)) %>%
   arrange(bandNumber, year) %>%
@@ -92,7 +80,7 @@ kbResight <- read_csv('data/encKB.csv') %>%
 
 # Function that creates a dataframe of ID, mass, wing, sex per species
 sppDf <- function(df, sp){
-  df %>% filter(speciesEnc == sp) %>% select(bandNumber, mass, wing, sex)
+  df %>% filter(species == sp) %>% select(bandNumber, mass, wing, sex)
 }
 
 

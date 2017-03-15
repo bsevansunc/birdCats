@@ -9,7 +9,7 @@ library('scales')
 
 # Desired species
 
-species <- c('AMRO', 'CACH', 'CARW', 'GRCA',
+studySpecies <- c('AMRO', 'CACH', 'CARW', 'GRCA',
              'HOWR', 'NOCA', 'NOMO', 'SOSP')
 
 
@@ -25,13 +25,13 @@ band <- read_csv('data/encBand.csv') %>%
   mutate(age = str_replace_all(age, 'UNK', 'U'),
          sex = str_replace_all(sex, 'UNK', 'U'),
          year = year(date)) %>%
-  filter(species %in% species) %>%
+  filter(species %in% studySpecies) %>%
   distinct
 
 
 # Read in recap data. Subset columns to bandNumber, site, and year:
 
-recap <- read_csv('data/encBand.csv') %>%
+recap <- read_csv('data/encRecap.csv') %>%
   arrange(bandNumber, date) %>%
   mutate(year = year(date)) %>%
   select(bandNumber, year, site) %>%
@@ -94,6 +94,30 @@ howr <- sppDf(band, 'HOWR')
 noca <- sppDf(band, 'NOCA')
 nomo <- sppDf(band, 'NOMO')
 sosp <- sppDf(band, 'SOSP')
+
+
+# Remove outliers in mass and wing data
+
+rmOutliers <- function(df){
+  df$mw <- round(df$mass/df$wing, digits=8)
+  repeat{
+    if (grubbs.test(df$mw)$p.value > 0.05) break
+    out <- round(
+      as.numeric(gsub("[^0-9.]","",grubbs.test(df$mw)$alternative)),digits=8)
+    df <- df %>% filter(mw != out | is.na(mw))
+  }
+  return(df %>% select(-mw))
+}
+
+amro <- rmOutliers(amro)
+cach <- rmOutliers(cach)
+carw <- rmOutliers(carw)
+grca <- rmOutliers(grca)
+howr <- rmOutliers(howr)
+noca <- rmOutliers(noca)
+nomo <- rmOutliers(nomo)
+sosp <- rmOutliers(sosp)
+
 
 
 #Function that calculates the body condition index

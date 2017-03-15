@@ -247,18 +247,6 @@ captureHistories <- bind_rows(
   unite(ch, -bandNumber, sep = '')
 
 
-# Results in an error processing data in marked:
-# Replace '0' with '.' for sites that were inactive in a given year
-
-# activeHistory <- ifelse(captureHistories[,2:18] == 1, 1,
-#                            ifelse(yearActive[,2:18] == 1, 0, '.'))
-# 
-# captureHistories[,2:18] <- activeHistory
-# 
-# captureHistories <- captureHistories %>%
-#   unite(ch, -bandNumber, sep = '')
-
-
 
 # Make data frame that includes capture histories, groups, and covariates
 

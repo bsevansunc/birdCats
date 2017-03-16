@@ -2,6 +2,9 @@ library('tidyverse')
 library('stringr')
 library('lubridate')
 library('scales')
+library('outliers')
+
+rename <- dplyr::rename
 
 # --------------------------------------------------------*
 # ----------- Read in and subset the data ----------------
@@ -136,14 +139,14 @@ bciFun <- function(species){
 
 # Calculate BCI for each species, scaled from 0 to 1
 
-amro$bci <- rescale(bciFun(amro))
-cach$bci <- rescale(bciFun(cach))
-carw$bci <- rescale(bciFun(carw))
-grca$bci <- rescale(bciFun(grca))
-howr$bci <- rescale(bciFun(howr))
-noca$bci <- rescale(bciFun(noca))
-nomo$bci <- rescale(bciFun(nomo))
-sosp$bci <- rescale(bciFun(sosp))
+amro$bci <- scale(bciFun(amro))[,1]
+cach$bci <- scale(bciFun(cach))[,1]
+carw$bci <- scale(bciFun(carw))[,1]
+grca$bci <- scale(bciFun(grca))[,1]
+howr$bci <- scale(bciFun(howr))[,1]
+noca$bci <- scale(bciFun(noca))[,1]
+nomo$bci <- scale(bciFun(nomo))[,1]
+sosp$bci <- scale(bciFun(sosp))[,1]
 
 
 #Combine into one dataframe
@@ -172,7 +175,15 @@ band <- left_join(band, bciDf, by = 'bandNumber')
 
 urban <- read_csv('data/covariateData.csv') %>%
   select(site, imp, can) %>%
-  filter(site %in% band$site)
+  filter(site %in% band$site) %>%
+  mutate(
+    imp2 = imp^2,
+    can2 = can^2,
+    imp = scale(imp)[,1],
+    can = scale(can)[,1],
+    imp2 = scale(imp2)[,1],
+    can2 = scale(can2)[,1]
+  )
 
 
 # Add to band dataframe with other covariates
@@ -186,7 +197,12 @@ band <- left_join(band, urban, by = 'site')
 
 # Read in data
 
-catAbund <- read.csv('data/catAbund.csv')
+catAbund <- read.csv('data/catAbund.csv') %>%
+  mutate(
+    tCats = scale(tCats)[,1],
+    cCats = scale(cCats)[,1],
+    mCats = scale(mCats)[,1]
+  )
 
 
 # Add to band dataframe with other covariates
@@ -197,7 +213,8 @@ band <- left_join(band, catAbund, by = 'site')
 # Get averaged transect counts
 
 transects <- read.csv('data/catDataTransect.csv') %>%
-  filter(!is.na(count), species == 'cat')
+  filter(!is.na(count), species == 'cat') %>%
+  mutate(site = as.character(site))
 
 # Function that sums counts by site, averaged over all visits
 
@@ -210,12 +227,13 @@ compileCounts <- function(df){
     counts[i] <- sum(newDf$count)
   }
   sitesCounts <- data.frame(
-    site=sites,count=counts,avgCount=counts/6,scAvg=scale(counts/6)[,1])
+    site=sites,avgTrans=scale(counts/6)[,1])
   rownames(sitesCounts) <- NULL
   return(sitesCounts)
 }
 
-transects <- compileCounts(transects) %>% select(site,scAvg)
+transects <- compileCounts(transects) %>%
+  select(site,avgTrans)
 
 band <- left_join(band, transects, by = 'site')
 

@@ -194,6 +194,32 @@ catAbund <- read.csv('data/catAbund.csv')
 band <- left_join(band, catAbund, by = 'site')
 
 
+# Get averaged transect counts
+
+transects <- read.csv('data/catDataTransect.csv') %>%
+  filter(!is.na(count), species == 'cat')
+
+# Function that sums counts by site, averaged over all visits
+
+compileCounts <- function(df){
+  sites <- c()
+  counts <- c()
+  for(i in unique(df$site)){
+    newDf <- df[df$site == i,]
+    sites[i] <- unique(newDf$site)
+    counts[i] <- sum(newDf$count)
+  }
+  sitesCounts <- data.frame(
+    site=sites,count=counts,avgCount=counts/6,scAvg=scale(counts/6)[,1])
+  rownames(sitesCounts) <- NULL
+  return(sitesCounts)
+}
+
+transects <- compileCounts(transects) %>% select(site,scAvg)
+
+band <- left_join(band, transects, by = 'site')
+
+
 
 # --------------------------------------------------------------------*
 # ------------ Identify sites as active or inactive ------------------

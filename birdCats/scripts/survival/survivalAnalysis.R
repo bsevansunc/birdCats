@@ -70,10 +70,11 @@ sosp.ddl <- make.design.data(sosp.proc, parameters = design.parameters)
 
 # Model parameters
 
-fit.models <- function(){
+fit.models <- function(proc,ddl){
   
 Phi.dot <- list(formula = ~1)
-Phi.tCats <- list(formula = ~avgTrans)
+Phi.trans <- list(formula = ~avgTrans)
+Phi.sexTrans <- list(formula = ~sex+avgTrans)
 
 Phi.one <- list(formula = ~sex)
 Phi.two <- list(formula = ~bci)
@@ -102,10 +103,16 @@ p.sex <- list(formula = ~sex)
 
 cml <- create.model.list(c("Phi","p"))
 
-results <- crm.wrapper(cml,data=howr.proc,ddl=howr.ddl,external=FALSE,accumulate=FALSE)
+results <- crm.wrapper(cml,data=proc,ddl=ddl,external=FALSE,accumulate=FALSE)
 
 return(results)
 }
 
-howr.models <- fit.models()
-
+amro.models <- fit.models(amro.proc,amro.ddl)
+cach.models <- fit.models(cach.proc,cach.ddl)
+carw.models <- fit.models(carw.proc,carw.ddl)
+grca.models <- fit.models(grca.proc,grca.ddl)
+howr.models <- fit.models(howr.proc,howr.ddl)
+noca.models <- fit.models(noca.proc,noca.ddl)
+sosp.models <- fit.models(sosp.proc,sosp.ddl)
+nomo.models <- fit.models(nomo.proc,nomo.ddl)

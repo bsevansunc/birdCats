@@ -1,10 +1,9 @@
-library('tidyverse')
 library('stringr')
 library('lubridate')
 library('scales')
 library('outliers')
+library('tidyverse')
 
-rename <- dplyr::rename
 
 # --------------------------------------------------------*
 # ----------- Read in and subset the data ----------------
@@ -195,30 +194,72 @@ band <- left_join(band, urban, by = 'site')
 # ---------------- Add cat variables -------------------------------
 # ------------------------------------------------------------------*
 
-# Read in data
+# # Read in data
+# 
+# catAbund <- read.csv('data/catAbund.csv') %>%
+#   mutate(
+#     tCats = scale(tCats)[,1],
+#     cCats = scale(cCats)[,1],
+#     mCats = scale(mCats)[,1]
+#   )
+# 
+# 
+# # Add to band dataframe with other covariates
+# 
+# band <- left_join(band, catAbund, by = 'site')
 
-catAbund <- read.csv('data/catAbund.csv') %>%
-  mutate(
-    tCats = scale(tCats)[,1],
-    cCats = scale(cCats)[,1],
-    mCats = scale(mCats)[,1]
-  )
 
+# Get camera data
+# All the data
+cam <- read.csv('data/catDataCamera.csv')
 
-# Add to band dataframe with other covariates
+# Just cats
+catCam <- cam %>%
+  filter(species=='cat',
+         note != 'Charlie, Sally') %>%
+  group_by(site, note) %>%
+  summarise
 
-band <- left_join(band, catAbund, by = 'site')
+# Function that calculates number of unique individuals per site
+countCamInds <- function(df, df2){
+  catList <- c()
+  siteList <- as.data.frame(unique(as.character(df2$site)))
+  colnames(siteList) <- c('site')
+  
+  for(i in df$site){
+    catList[i] <- nrow(unique(df[df$site==i,2]))
+  }
+  
+  catList <- as.data.frame(catList)
+  names <- rownames(catList)
+  rownames(catList) <- NULL
+  catList <- cbind(names,catList)
+  colnames(catList) <- c('site','cCats')
+  
+  catList <- left_join(siteList,catList,by='site')
+  catList[is.na(catList)] <- 0
+  
+  return(catList)
+}
+
+# Average individual cats per site per deployment
+cCats <- countCamInds(catCam,cam) %>%
+  mutate(cCats = cCats/3)
+# The following line is commented out because scaling resulted in model issues
+#  %>% mutate(cCats = scale(cCats)[,1])
+
+band <- left_join(band,cCats,by='site')
 
 
 # Get averaged transect counts
 
-transects <- read.csv('data/catDataTransect.csv') %>%
+trans <- read.csv('data/catDataTransect.csv') %>%
   filter(!is.na(count), species == 'cat') %>%
   mutate(site = as.character(site))
 
 # Function that sums counts by site, averaged over all visits
 
-compileCounts <- function(df){
+countTransInds <- function(df){
   sites <- c()
   counts <- c()
   for(i in unique(df$site)){
@@ -227,15 +268,17 @@ compileCounts <- function(df){
     counts[i] <- sum(newDf$count)
   }
   sitesCounts <- data.frame(
-    site=sites,avgTrans=scale(counts/6)[,1])
+    site=sites,tCats=counts)
   rownames(sitesCounts) <- NULL
   return(sitesCounts)
 }
 
-transects <- compileCounts(transects) %>%
-  select(site,avgTrans)
+tCats <- countTransInds(trans) %>%
+  select(site,tCats) %>%
+  mutate(tCats = tCats/6)
+#  %>% mutate(tCats = scale(tCats)[,1])
 
-band <- left_join(band, transects, by = 'site')
+band <- left_join(band, tCats, by = 'site')
 
 
 
@@ -243,32 +286,32 @@ band <- left_join(band, transects, by = 'site')
 # ------------ Identify sites as active or inactive ------------------
 # --------------------------------------------------------------------*
 
-# Create a dataframe of sites and years in which 
-# banding/resighting occurred at each
-
-siteHistory <- bind_rows(band %>% select(site, year),
-                         recap %>% select(site, year),
-                         partResight %>% select(site, year),
-                         techResight %>% select(site, year),
-                         kbResight %>% select(site, year)) %>%
-  arrange(site, year) %>%
-  distinct
-
-
-# Create a dataframe of bird ID and corresponding site
-
-idSite <- band %>% select(bandNumber, site)
-
-
-# Create a wide dataframe with '1' indicating an active site,
-# '0' indicating inactive
-
-yearActive <- left_join(idSite, siteHistory, by = 'site') %>%
-  mutate(active = '1') %>%
-  spread(key = year, value = active, fill = 0) %>%
-  select(-site)
-
-colnames(yearActive) <- c('bandNumber', paste('active', 1:17, sep = ''))
+# # Create a dataframe of sites and years in which 
+# # banding/resighting occurred at each
+# 
+# siteHistory <- bind_rows(band %>% select(site, year),
+#                          recap %>% select(site, year),
+#                          partResight %>% select(site, year),
+#                          techResight %>% select(site, year),
+#                          kbResight %>% select(site, year)) %>%
+#   arrange(site, year) %>%
+#   distinct
+# 
+# 
+# # Create a dataframe of bird ID and corresponding site
+# 
+# idSite <- band %>% select(bandNumber, site)
+# 
+# 
+# # Create a wide dataframe with '1' indicating an active site,
+# # '0' indicating inactive
+# 
+# yearActive <- left_join(idSite, siteHistory, by = 'site') %>%
+#   mutate(active = '1') %>%
+#   spread(key = year, value = active, fill = 0) %>%
+#   select(-site)
+# 
+# colnames(yearActive) <- c('bandNumber', paste('active', 1:17, sep = ''))
 
 
 # ---------------------------------------------------------*
@@ -295,7 +338,7 @@ captureHistories <- bind_rows(
 # Make data frame that includes capture histories, groups, and covariates
 
 birdData <- left_join(band,captureHistories, by = 'bandNumber') %>%
-  left_join(yearActive, by = 'bandNumber') %>%
+#  left_join(yearActive, by = 'bandNumber') %>%
   rename(bandDate = date, bandYear = year)
 
 # Writes to file for survival analysis

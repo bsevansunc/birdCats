@@ -443,7 +443,7 @@ imp2.marred.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# Model selection table
+# Model selection tables
 
 modelList1 <- list(imp.model,can.model,density.model,
                    imp2.model,can2.model,density2.model)
@@ -451,7 +451,6 @@ names1 <- c('imp','can','hDensity','imp2','can2','hDensity2')
 
 table1 <- aictab(cand.set=modelList1,modnames=names1)
 
-# Model selection table
 
 modelList2 <- list(imp2.model,imp2.age.model,imp2.income.model,imp2.income2.model,
                    imp2.marred.model,imp2.age2.model,imp2.eduHS.model,imp2.eduC.model)
@@ -460,68 +459,14 @@ names2 <- c('imp2','imp2.age','imp2.income','imp2.income2','imp2.marred','imp2.a
 
 table2 <- aictab(cand.set=modelList2,modnames=names2)
 
+
+
 # -------------------*
 # ---- Abundance ----
 # -------------------*
 
 transAbund <- predict(imp2.income2.model, type="lambda", appenddata = TRUE)
 
-
-
-# ----------------------------------------------------------------*
-# ------ Predict based on new data ------
-# ----------------------------------------------------------------*
-
-nd <- data.frame(imp = 0:100, 
-                 medianIncome = 106227,
-                 time = 533.5,
-                 dew = 68,
-                 temp = 79)
-
-predictImp <- predict(mImp2Income, newdata = nd, type = 'lambda', appenddata = TRUE)
-
-
-nd2 <- data.frame(imp = median(as.vector(covs$imp)), 
-                 medianIncome = seq(49800, 240600, by = 100),
-                 time = median(as.vector(sitesWithObsCovs$time)),
-                 dew = median(as.vector(sitesWithObsCovs$dew)),
-                 temp = median(as.vector(sitesWithObsCovs$temp)))
-
-predictInc <- predict(mImp2Income, newdata = nd2, type = 'lambda', appenddata = TRUE)
-
-
-
-# Get AICc values from models:
-
-AICc(mNull, return.K = FALSE)
-AICc(mGlobal, return.K = FALSE)
-AICc(mCan, return.K = FALSE)
-AICc(mImp, return.K = FALSE)
-AICc(mIncome, return.K = FALSE)
-AICc(mImpCan, return.K = FALSE)
-AICc(mImp2, return.K = FALSE) # Second-best
-AICc(mCan2, return.K = FALSE)
-AICc(mCanIncome, return.K = FALSE)
-AICc(mImpIncome, return.K = FALSE)
-AICc(mImp2Income, return.K = FALSE) # This is the best model
-AICc(mCan2Income, return.K = FALSE)
-AICc(mImp2Can2Income, return.K = FALSE)
-
-
-# Get log-likelihoods:
-
-extractLL(mNull)*(-2)
-extractLL(mCan)*(-2)
-extractLL(mImp)*(-2)
-extractLL(mImpCan)*(-2)
-extractLL(mCan2)*(-2)
-extractLL(mImp2)*(-2)
-extractLL(mCan2Income)*(-2)
-extractLL(mImp2Income)*(-2)
-extractLL(mImp2Can2Income)*(-2)
-extractLL(mIncome)*(-2)
-extractLL(mCanIncome)*(-2)
-extractLL(mImpIncome)*(-2)
 
 
 
@@ -564,14 +509,37 @@ removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC
 
 camCovs <- covs %>%
   filter(!site %in% removeSites) %>%
-  data.frame
+  data.frame %>%
+  mutate(
+    imp2 = imp^2,
+    imp = scale(imp)[,1],
+    imp2 = scale(imp2)[,1],
+    can2 = can^2,
+    can = scale(can)[,1],
+    can2 = scale(can2)[,1],
+    medianIncome2 = medianIncome^2,
+    medianIncome = scale(medianIncome)[,1],
+    medianIncome2 = scale(medianIncome2)[,1],
+    hDensity2 = hDensity^2,
+    hDensity = scale(hDensity)[,1],
+    hDensity2 = scale(hDensity2)[,1],
+    age2 = age^2,
+    age = scale(age)[,1],
+    age2 = scale(age2)[,1],
+    eduHS = scale(eduHS)[,1],
+    eduC = scale(eduC)[,1],
+    marred = scale(marred)[,1])
 
 
 # Get detection covariates
 
 camDetCovs <- read.csv('data/camDetCovs.csv') %>%
   filter(!site %in% removeSites) %>%
-  select(site, day, tempHigh, tempLow, dewLow)
+  select(site, day, tempHigh, tempLow, dewLow) %>%
+  mutate(
+    tempHigh = scale(tempHigh)[,1],
+    tempLow = scale(tempLow)[,1],
+    dewLow = scale(dewLow)[,1])
 
 
 # Create and unmarkedFramePCount object for pcount
@@ -579,8 +547,7 @@ camDetCovs <- read.csv('data/camDetCovs.csv') %>%
 camUmfWithCovs <- unmarkedFramePCount(
   umfCam[,-1],
   siteCovs = camCovs,
-  obsCovs = camDetCovs
-  )
+  obsCovs = camDetCovs)
 
 
 # ---------------------------------------------------------------------------------*
@@ -590,103 +557,156 @@ camUmfWithCovs <- unmarkedFramePCount(
 
 #Null
 
-camNull <- pcount(
-  formula = ~scale(dewLow) ~1, 
+null.cmodel <- pcount(
+  formula = ~dewLow ~1, 
   data= camUmfWithCovs,
-  K = 50)
+  mixture = 'NB', K = 50)
 
 
 
 # Global
 
-camImp2Can2Income <- pcount(
-  formula = ~scale(dewLow) 
-    ~scale(can) + scale(can^2) + scale(imp) + scale(imp^2) + scale(medianIncome), 
-  data= camUmfWithCovs,
-  K = 50)
+global.cmodel <- pcount(
+  formula = ~dewLow
+    ~can + can2 + medianIncome + medianIncome2 + age + age2 + marred + eduC + eduHS,
+  data= camUmfWithCovs, mixture = 'NB', K = 50)
 
 
 # Single abundance covariates
 
-camImp <- pcount(
+imp.cmodel <- pcount(
   formula = ~dewLow ~imp, 
-  data = camUmfWithCovs,
-  K = 50)
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camCan <- pcount(
+can.cmodel <- pcount(
   formula = ~dewLow ~can, 
-  data = camUmfWithCovs, 
-  K = 50)
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camIncome <- pcount(
-  formula = ~scale(dewLow) ~scale(medianIncome),
-  data = camUmfWithCovs, 
-  K = 50)
+density.cmodel <- pcount(
+  formula = ~dewLow ~hDensity, 
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+income.cmodel <- pcount(
+  formula = ~dewLow ~medianIncome,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+eduC.cmodel <- pcount(
+  formula = ~dewLow ~eduC,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+eduHS.cmodel <- pcount(
+  formula = ~dewLow ~eduHS,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+age.cmodel <- pcount(
+  formula = ~dewLow ~age,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+marred.cmodel <- pcount(
+  formula = ~dewLow ~marred,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
 
 
 # Additive
 
-camCanIncome <- pcount(
-  formula = ~scale(dewLow) ~scale(can) + scale(medianIncome),
-  data = camUmfWithCovs,
-  K = 50)
+can.income.cmodel <- pcount(
+  formula = ~dewLow ~can + medianIncome,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camImpIncome <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(medianIncome),
-  data = camUmfWithCovs,
-  K = 50)
+imp.income.cmodel <- pcount(
+  formula = ~dewLow ~imp + medianIncome,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camImpCan <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(can),
-  data = camUmfWithCovs,
-  K = 50)
 
 
 # Quadratic
 
-camImp2 <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2),
-  data = camUmfWithCovs,
-  K = 50)
+imp2.cmodel <- pcount(
+  formula = ~dewLow ~imp + imp2,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-# This is the best model: 
-camCan2 <- pcount(
-  formula = ~scale(dewLow) ~scale(can) + scale(can^2),
-  data = camUmfWithCovs,
-  K = 50)
+can2.cmodel <- pcount(
+  formula = ~dewLow ~can + can2,
+  data = camUmfWithCovs, mixture= 'NB', K = 50)
 
-camImp2Income <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(medianIncome),
-  data = camUmfWithCovs,
-  K = 50)
+density2.cmodel <- pcount(
+  formula = ~dewLow ~hDensity + hDensity2,
+  data = camUmfWithCovs, mixture= 'NB', K = 50)
 
-camCan2Income <- pcount(
-  formula = ~scale(dewLow) ~scale(can) + scale(can^2) + scale(medianIncome),
-  data = camUmfWithCovs,
-  K = 50)
+age2.cmodel <- pcount(
+  formula = ~dewLow ~age+age2,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camCan2Imp <- pcount(
-  formula = ~scale(dewLow) ~scale(can) + scale(can^2) + scale(imp),
-  data = camUmfWithCovs,
-  K = 50)
+imp2.income.cmodel <- pcount(
+  formula = ~dewLow ~imp+imp2+medianIncome,
+  data = camUmfWithCovs, mixture='NB', K = 50)
 
-camImp2Can <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(can),
-  data = camUmfWithCovs,
-  K = 50)
+can2.income.cmodel <- pcount(
+  formula = ~dewLow ~can + can2 + medianIncome,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-camImp2Can2 <- pcount(
-  formula = ~scale(dewLow) ~scale(imp) + scale(imp^2) + scale(can) + scale(can^2),
-  data = camUmfWithCovs,
-  K = 50)
+imp2.eduC.cmodel <- pcount(
+  formula = ~dewLow ~imp + imp2 + eduC,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.eduC.cmodel <- pcount(
+  formula = ~dewLow ~can + can2 + eduC,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+imp2.eduHS.cmodel <- pcount(
+  formula = ~dewLow ~imp + imp2 + eduHS,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.eduHS.cmodel <- pcount(
+  formula = ~dewLow ~can + can2 + eduHS,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.marred.cmodel <- pcount(
+  formula = ~dewLow ~can+can2+marred,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.age.cmodel <- pcount(
+  formula = ~dewLow ~can+can2+age,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.age2.cmodel <- pcount(
+  formula = ~dewLow ~can+can2+age+age2,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.income2.cmodel <- pcount(
+  formula = ~dewLow ~can+can2+medianIncome+medianIncome2,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+can2.income.eduC.cmodel <- pcount(
+  formula = ~dewLow ~can+can2+medianIncome+eduC,
+  data = camUmfWithCovs, mixture = 'NB', K = 50)
+
+# Model selection tables
+
+cmodelList1 <- list(imp.cmodel,can.cmodel,density.cmodel,
+                   imp2.cmodel,can2.cmodel,density2.cmodel)
+cnames1 <- c('imp','can','hDensity','imp2','can2','hDensity2')
+
+ctable1 <- aictab(cand.set=cmodelList1,modnames=cnames1)
+
+
+cmodelList2 <- list(can2.cmodel,can2.age.cmodel,can2.income.cmodel,
+                    can2.income2.cmodel,can2.marred.cmodel,can2.age2.cmodel,
+                    can2.eduHS.cmodel,can2.eduC.cmodel)
+cnames2 <- c('can2','can2.age','can2.income','can2.income2','can2.marred',
+             'can2.age2','can2.eduHS','can2.eduC')
+
+ctable2 <- aictab(cand.set=cmodelList2,modnames=cnames2)
+
+
 
 
 # -------------------*
 # ---- Abundance ----
 # -------------------*
 
-camAbund <- predict(camCan2, type = 'state')
+camAbund <- predict(can2.eduC.cmodel, type = 'state')
 
 
 # -------------------------------------------------*
@@ -694,52 +714,17 @@ camAbund <- predict(camCan2, type = 'state')
 # -------------------------------------------------*
 
 camSites <- camCovs %>%
-  select(site, can)
+  select(site, can, imp, eduC)
 
-camSiteDensity <- cbind.data.frame(camSites, camDensity)
-can <- camSiteDensity$can
-camDens <- camSiteDensity$Predicted
+camSiteAbund <- cbind.data.frame(camSites, camAbund)
+cCan <- camSiteAbund$can
+cAbund <- camSiteAbund$Predicted
+cImp <- camSiteAbund$imp
+cEduC <- camSiteAbund$eduC
 
-plot(can, camDens)
+plot(cCan, cAbund)
+plot(cEduC, cAbund)
 
-
-
-# Get AICc scores
-
-AICc(camNull, return.K = FALSE)
-AICc(camCan, return.K = FALSE)
-AICc(camImp, return.K = FALSE)
-AICc(camIncome, return.K = FALSE)
-AICc(camCan2, return.K = FALSE)
-AICc(camImp2, return.K = FALSE)
-AICc(camImpCan, return.K = FALSE)
-AICc(camImpIncome, return.K = FALSE)
-AICc(camCanIncome, return.K = FALSE)
-AICc(camCan2Income, return.K = FALSE)
-AICc(camImp2Income, return.K = FALSE)
-AICc(camImp2Can2Income, return.K = FALSE)
-AICc(camImp2Can2, return.K = FALSE)
-AICc(camImp2Can, return.K = FALSE)
-AICc(camCan2Imp, return.K = FALSE)
-
-
-# Get log-likelihood:
-
-logLik(camNull)*(-2)
-logLik(camCan)*(-2)
-logLik(camImp)*(-2)
-logLik(camIncome)*(-2)
-logLik(camCan2)*(-2)
-logLik(camImp2)*(-2)
-logLik(camImpCan)*(-2)
-logLik(camImpIncome)*(-2)
-logLik(camCanIncome)*(-2)
-logLik(camCan2Income)*(-2)
-logLik(camImp2Income)*(-2)
-logLik(camImp2Can2)*(-2)
-logLik(camImp2Can)*(-2)
-logLik(camCan2Imp)*(-2)
-logLik(camImp2Can2Income)*(-2)
 
 
 # ---------------------------------------*

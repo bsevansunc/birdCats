@@ -152,6 +152,36 @@ gUmfWithCovs <- unmarkedFrameGDS(
   unitsIn =        'm'
   )
 
+# Scale variables
+
+gUmfWithCovs@siteCovs <- gUmfWithCovs@siteCovs %>%
+  mutate(
+    can2 = can^2,
+    can = scale(can)[,1],
+    can2 = scale(can2)[,1],
+    imp2 = imp^2,
+    imp = scale(imp)[,1],
+    imp2 = scale(imp2)[,1],
+    medianIncome2 = medianIncome^2,
+    medianIncome = scale(medianIncome)[,1],
+    medianIncome2 = scale(medianIncome2)[,1],
+    hDensity2 = hDensity^2,
+    hDensity = scale(hDensity)[,1],
+    hDensity2 = scale(hDensity2)[,1],
+    age2 = age^2,
+    age = scale(age)[,1],
+    age2 = scale(age2)[,1],
+    eduHS = scale(eduHS)[,1],
+    eduC = scale(eduC)[,1],
+    marred = scale(marred)[,1])
+
+gUmfWithCovs@yearlySiteCovs <- gUmfWithCovs@yearlySiteCovs %>%
+  mutate(
+    time = scale(time)[,1],
+    temp = scale(temp)[,1],
+    dew = scale(dew)[,1])
+
+
 
 # Create unmarkedFrameDS object for distsamp
 
@@ -173,155 +203,268 @@ gUmfWithCovs <- unmarkedFrameGDS(
 
 # Null model
 
-mNull <-  gdistsamp(
-  lambdaformula = ~ 1,
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+null.model <-  gdistsamp(
+  lambdaformula = ~1,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density', 
-  unitsOut = 'ha', mixture="P")
+  keyfun = "halfnorm", mixture="NB")
 
 
 # Global model
 
-mGlobal <- gdistsamp(
-  lambdaformula = ~ scale(imp)*scale(can) +
-    scale(imp^2) + scale(can^2) +
-    scale(age)*scale(marred) + scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density', 
-  unitsOut = 'ha', mixture="P")
-
-
-# Abundance--impervious^2 + median income. This is the best model
-
-mImp2Income <- gdistsamp(
-  lambdaformula = ~ scale(imp)  + scale(imp^2) + 
-    scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'abund', unitsOut = 'ha', 
-  mixture="P")
-
-
-# Abundance--imp
-
-mImp <- gdistsamp(
-  lambdaformula = ~ scale(imp),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+global.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+age+marred+medianIncome+medianIncome2,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--can
+# impervious^2 + median income
 
-mCan <- gdistsamp(
-  lambdaformula = ~ scale(can),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+imp2.income.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+medianIncome,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--medianIncome
+# impervious
 
-mIncome <- gdistsamp(
-  lambdaformula = ~ scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+imp.model <- gdistsamp(
+  lambdaformula = ~imp,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--imp + can
+# canopy
 
-mImpCan <- gdistsamp(
-  lambdaformula = ~ scale(imp) + scale(can),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+can.model <- gdistsamp(
+  lambdaformula = ~can,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--imp^2 + can^2 + medianIncome
+# median income
 
-mImp2Can2Income <- gdistsamp(
-  lambdaformula = ~ scale(imp) + scale(imp^2) + 
-    scale(can) + scale(can^2) + scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+income.model <- gdistsamp(
+  lambdaformula = ~ medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density', 
-  unitsOut = 'ha', mixture="P")
+  keyfun = "halfnorm", mixture="NB")
 
+# income2
 
-# Abundance--impervious^2
-
-mImp2 <- gdistsamp(
-  lambdaformula = ~ scale(imp) + scale(imp^2),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+income2.model <- gdistsamp(
+  lambdaformula = ~ medianIncome+medianIncome2,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density', 
-  unitsOut = 'ha', mixture="P")
+  keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--canopy^2
 
-mCan2 <- gdistsamp(
-  lambdaformula = ~ scale(can) + scale(can^2),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+# impervious^2
+
+imp2.model <- gdistsamp(
+  lambdaformula = ~ imp + imp2,
+  phiformula = ~ time,
+  pformula = ~dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density',
-  unitsOut = 'ha', mixture="P")
+  keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--canopy^2 + medianIncome
+# canopy^2
 
-mCan2Income <- gdistsamp(
-  lambdaformula = ~ scale(can) + scale(can^2) +
-    scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+can2.model <- gdistsamp(
+  lambdaformula = ~can+can2,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs, mixture="NB")
+
+
+# canopy^2 + medianIncome
+
+can2.income.model <- gdistsamp(
+  lambdaformula = ~ can+can2+medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density',
-  unitsOut = 'ha', mixture="P")
+  keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--can + medianIncome
+# canopy + medianIncome
 
-mCanIncome <- gdistsamp(
-  lambdaformula = ~ scale(can) +
-    scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+can.income.model <- gdistsamp(
+  lambdaformula = ~ can+medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density',
-  unitsOut = 'ha', mixture="NB")
+  keyfun = "halfnorm", mixture="NB")
 
 
-# Abundance--imp + medianIncome
+# imp + medianIncome
 
-mImpIncome <- gdistsamp(
-  lambdaformula = ~ scale(imp) +
-    scale(medianIncome),
-  phiformula = ~ scale(time),
-  pformula = ~ scale(dew) * scale(temp) + scale(time),
+imp.income.model <- gdistsamp(
+  lambdaformula = ~ imp+medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
-  keyfun = "halfnorm", output = 'density',
-  unitsOut = 'ha', mixture="NB")
+  keyfun = "halfnorm",  mixture="NB")
 
+
+# age
+
+age.model <- gdistsamp(
+  lambdaformula = ~age,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# human density
+
+density.model <- gdistsamp(
+  lambdaformula = ~hDensity,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# hDensity2
+
+density2.model <- gdistsamp(
+  lambdaformula = ~hDensity+hDensity2,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# married
+
+marred.model <- gdistsamp(
+  lambdaformula = ~marred,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# HS education
+
+eduHS.model <- gdistsamp(
+  lambdaformula = ~eduHS,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# C education
+
+eduC.model <- gdistsamp(
+  lambdaformula = ~eduC,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# imp2 eduHS
+
+imp2.eduHS.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+eduHS,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# imp2 eduC
+
+imp2.eduC.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+eduC,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# imp2 + income + C education
+
+imp2.income.eduC.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+eduC+medianIncome,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# imp2 + income2
+
+imp2.income2.model <- gdistsamp(
+  lambdaformula = ~ imp+imp2+medianIncome+medianIncome2,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# imp2 + age
+
+imp2.age.model <- gdistsamp(
+  lambdaformula = ~ imp+imp2+age,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+# imp2 + age2
+
+imp2.age2.model <- gdistsamp(
+  lambdaformula = ~ imp+imp2+age+age2,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# imp2 + marred
+
+imp2.marred.model <- gdistsamp(
+  lambdaformula = ~ imp+imp2+marred,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# Model selection table
+
+modelList1 <- list(imp.model,can.model,density.model,
+                   imp2.model,can2.model,density2.model)
+names1 <- c('imp','can','hDensity','imp2','can2','hDensity2')
+
+table1 <- aictab(cand.set=modelList1,modnames=names1)
+
+# Model selection table
+
+modelList2 <- list(imp2.model,imp2.age.model,imp2.income.model,imp2.income2.model,
+                   imp2.marred.model,imp2.age2.model,imp2.eduHS.model,imp2.eduC.model)
+names2 <- c('imp2','imp2.age','imp2.income','imp2.income2','imp2.marred','imp2.age2',
+            'imp2.eduHS','imp2.eduC')
+
+table2 <- aictab(cand.set=modelList2,modnames=names2)
 
 # -------------------*
 # ---- Abundance ----
 # -------------------*
 
-transAbund <- predict(mImp2Income, type="lambda", appenddata = TRUE)
+transAbund <- predict(imp2.income2.model, type="lambda", appenddata = TRUE)
 
 
 
@@ -387,15 +530,20 @@ extractLL(mImpIncome)*(-2)
 # ----------------------------------------------------------------*
 
 transSites <- covs %>%
-  select(site, imp, medianIncome)
+  select(site, imp, can, medianIncome, eduC,hDensity)
 
-transSiteDensity <- cbind.data.frame(transSites, transDensity$Predicted)
-imp <- transSiteDensity$imp
-inc <- transSiteDensity$medianIncome
-dens <- transSiteDensity$Predicted
+transSiteAbund <- cbind.data.frame(transSites, transAbund$Predicted)
+can <- transSiteAbund$can
+imp <- transSiteAbund$imp
+inc <- transSiteAbund$medianIncome
+abund <- transAbund$Predicted
+edu <- transSiteAbund$eduC
+dens <- transSiteAbund$hDensity
 
-plot(imp, dens)
-plot(inc, dens)
+plot(imp, abund)
+plot(edu, abund)
+plot(inc, abund)
+plot(dens, abund)
 
 
 

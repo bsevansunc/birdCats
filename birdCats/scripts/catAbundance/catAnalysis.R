@@ -2,7 +2,8 @@
 # ---- SET-UP ----
 # =================================================================================*
 
-# Function searches packages in installed package list, add them if you don't have them, and loads the library:
+# Function searches packages in installed package list,
+# add them if you don't have them, and loads the library:
 
 smartLibrary <- function(packageVector){
   for(i in 1:length(packageVector)){
@@ -17,12 +18,6 @@ smartLibrary <- function(packageVector){
 
 smartLibrary(c('unmarked', 'dplyr', 'tidyr', 'camtrapR', 'ggplot2', 'AICcmodavg'))
 
-# setwd('/Users/bsevans/Desktop/gits/birdCats/birdCats/') # Macbook -- B
-# setwd('C:/Users/Brian/Desktop/gits/birdCats') # Office Windows  -- B
-# setwd('C:/Users/kbenn/Documents/GitHub/birdCats/birdCats') # Laptop -- K
-
-
-# list.files()
 
 options(stringsAsFactors = F)
 
@@ -152,7 +147,7 @@ gUmfWithCovs <- unmarkedFrameGDS(
   unitsIn =        'm'
   )
 
-# Scale variables
+# Square and scale variables
 
 gUmfWithCovs@siteCovs <- gUmfWithCovs@siteCovs %>%
   mutate(
@@ -177,29 +172,17 @@ gUmfWithCovs@siteCovs <- gUmfWithCovs@siteCovs %>%
 
 gUmfWithCovs@yearlySiteCovs <- gUmfWithCovs@yearlySiteCovs %>%
   mutate(
+    time2 = time^2,
     time = scale(time)[,1],
+    time2 = scale(time2)[,1],
     temp = scale(temp)[,1],
     dew = scale(dew)[,1])
-
-
-
-# Create unmarkedFrameDS object for distsamp
-
-# umfWithCovs <- unmarkedFrameDS(
-#   y =              as.matrix(catTransectUmf),
-#   siteCovs =       data.frame(sitesWithCovs),               
-#   survey =         'line',
-#   dist.breaks=     seq(0,50, by = 5),
-#   tlength =        rep(200, nrow(catTransectUmf)),
-#   unitsIn =        'm'
-#   )
 
 
 # ---------------------------------------------------------------------------------*
 # ---- Transect model fitting ----
 # ---------------------------------------------------------------------------------*
 
-# gdistsamp
 
 # Null model
 
@@ -214,22 +197,15 @@ null.model <-  gdistsamp(
 # Global model
 
 global.model <- gdistsamp(
-  lambdaformula = ~imp+imp2+age+marred+medianIncome+medianIncome2,
+  lambdaformula = ~imp+imp2+age+age2+eduC+marred+medianIncome+medianIncome2,
   phiformula = ~time,
   pformula = ~dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
 
-# impervious^2 + median income
 
-imp2.income.model <- gdistsamp(
-  lambdaformula = ~imp+imp2+medianIncome,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
+# Single covariates
 
 # impervious
 
@@ -260,7 +236,83 @@ income.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# income2
+
+# age
+
+age.model <- gdistsamp(
+  lambdaformula = ~age,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# human density
+
+density.model <- gdistsamp(
+  lambdaformula = ~hDensity,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# married
+
+marred.model <- gdistsamp(
+  lambdaformula = ~marred,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# HS education
+
+eduHS.model <- gdistsamp(
+  lambdaformula = ~eduHS,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# C education
+
+eduC.model <- gdistsamp(
+  lambdaformula = ~eduC,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+
+# Additive
+
+# canopy + medianIncome
+
+can.income.model <- gdistsamp(
+  lambdaformula = ~ can+medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
+# imp + medianIncome
+
+imp.income.model <- gdistsamp(
+  lambdaformula = ~ imp+medianIncome,
+  phiformula = ~ time,
+  pformula = ~ dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm",  mixture="NB")
+
+
+# Quadratic
+
+# income^2
 
 income2.model <- gdistsamp(
   lambdaformula = ~ medianIncome+medianIncome2,
@@ -290,6 +342,16 @@ can2.model <- gdistsamp(
   data = gUmfWithCovs, mixture="NB")
 
 
+# impervious^2 + median income
+
+imp2.income.model <- gdistsamp(
+  lambdaformula = ~imp+imp2+medianIncome,
+  phiformula = ~time,
+  pformula = ~dew*temp+time,
+  data = gUmfWithCovs,
+  keyfun = "halfnorm", mixture="NB")
+
+
 # canopy^2 + medianIncome
 
 can2.income.model <- gdistsamp(
@@ -300,46 +362,7 @@ can2.income.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# canopy + medianIncome
-
-can.income.model <- gdistsamp(
-  lambdaformula = ~ can+medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# imp + medianIncome
-
-imp.income.model <- gdistsamp(
-  lambdaformula = ~ imp+medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",  mixture="NB")
-
-
-# age
-
-age.model <- gdistsamp(
-  lambdaformula = ~age,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-# human density
-
-density.model <- gdistsamp(
-  lambdaformula = ~hDensity,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# hDensity2
+# hDensity^2
 
 density2.model <- gdistsamp(
   lambdaformula = ~hDensity+hDensity2,
@@ -349,35 +372,7 @@ density2.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# married
-
-marred.model <- gdistsamp(
-  lambdaformula = ~marred,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-# HS education
-
-eduHS.model <- gdistsamp(
-  lambdaformula = ~eduHS,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-# C education
-
-eduC.model <- gdistsamp(
-  lambdaformula = ~eduC,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# imp2 eduHS
+# impervious^2 + eduHS
 
 imp2.eduHS.model <- gdistsamp(
   lambdaformula = ~imp+imp2+eduHS,
@@ -387,7 +382,7 @@ imp2.eduHS.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# imp2 eduC
+# impervious^2 + eduC <- this is the best model
 
 imp2.eduC.model <- gdistsamp(
   lambdaformula = ~imp+imp2+eduC,
@@ -396,7 +391,7 @@ imp2.eduC.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# imp2 + income + C education
+# impervious^2 + income + C education
 
 imp2.income.eduC.model <- gdistsamp(
   lambdaformula = ~imp+imp2+eduC+medianIncome,
@@ -405,7 +400,7 @@ imp2.income.eduC.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# imp2 + income2
+# impervious^2 + income^2
 
 imp2.income2.model <- gdistsamp(
   lambdaformula = ~ imp+imp2+medianIncome+medianIncome2,
@@ -414,7 +409,7 @@ imp2.income2.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# imp2 + age
+# impervious^2 + age
 
 imp2.age.model <- gdistsamp(
   lambdaformula = ~ imp+imp2+age,
@@ -423,7 +418,7 @@ imp2.age.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# imp2 + age2
+# impervious^2 + age^2
 
 imp2.age2.model <- gdistsamp(
   lambdaformula = ~ imp+imp2+age+age2,
@@ -433,7 +428,7 @@ imp2.age2.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# imp2 + marred
+# impervious^2 + marred
 
 imp2.marred.model <- gdistsamp(
   lambdaformula = ~ imp+imp2+marred,
@@ -441,6 +436,12 @@ imp2.marred.model <- gdistsamp(
   pformula = ~ dew*temp+time,
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
+
+
+
+# -------------------*
+# ---- Abundance ----
+# -------------------*
 
 
 # Model selection tables
@@ -460,12 +461,9 @@ names2 <- c('imp2','imp2.age','imp2.income','imp2.income2','imp2.marred','imp2.a
 table2 <- aictab(cand.set=modelList2,modnames=names2)
 
 
+# Predicted abund values from best model
 
-# -------------------*
-# ---- Abundance ----
-# -------------------*
-
-transAbund <- predict(imp2.income2.model, type="lambda", appenddata = TRUE)
+transAbund <- predict(imp2.eduC.model, type="lambda", appenddata = TRUE)
 
 
 
@@ -493,9 +491,9 @@ plot(dens, abund)
 
 
 
-# =================================================================================*
+# =============================================================================*
 # ---- CAMERA DATA ----
-# =================================================================================*
+# =============================================================================*
 
 # Create detection history for each site:
 
@@ -504,8 +502,10 @@ umfCam <- read.csv('data/catCamDetection.csv') %>%
 
 
 # Get abundance covariates for the camera-only sites
+# Square and scale variables
 
-removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1','GERYERIMD1', 'MISSEDDC1')
+removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1',
+                 'GERYERIMD1', 'MISSEDDC1')
 
 camCovs <- covs %>%
   filter(!site %in% removeSites) %>%
@@ -531,7 +531,7 @@ camCovs <- covs %>%
     marred = scale(marred)[,1])
 
 
-# Get detection covariates
+# Get scaled detection covariates
 
 camDetCovs <- read.csv('data/camDetCovs.csv') %>%
   filter(!site %in% removeSites) %>%
@@ -542,7 +542,7 @@ camDetCovs <- read.csv('data/camDetCovs.csv') %>%
     dewLow = scale(dewLow)[,1])
 
 
-# Create and unmarkedFramePCount object for pcount
+# Create an unmarkedFramePCount object for pcount
 
 camUmfWithCovs <- unmarkedFramePCount(
   umfCam[,-1],
@@ -550,9 +550,9 @@ camUmfWithCovs <- unmarkedFramePCount(
   obsCovs = camDetCovs)
 
 
-# ---------------------------------------------------------------------------------*
+# ------------------------------------------------------------------------------*
 # ---- Cam model fitting ----
-#----------------------------------------------------------------------------------*
+#-------------------------------------------------------------------------------*
 
 
 #Null
@@ -561,7 +561,6 @@ null.cmodel <- pcount(
   formula = ~dewLow ~1, 
   data= camUmfWithCovs,
   mixture = 'NB', K = 50)
-
 
 
 # Global
@@ -682,6 +681,12 @@ can2.income.eduC.cmodel <- pcount(
   formula = ~dewLow ~can+can2+medianIncome+eduC,
   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
+
+
+# -------------------*
+# ---- Abundance ----
+# -------------------*
+
 # Model selection tables
 
 cmodelList1 <- list(imp.cmodel,can.cmodel,density.cmodel,
@@ -700,11 +705,7 @@ cnames2 <- c('can2','can2.age','can2.income','can2.income2','can2.marred',
 ctable2 <- aictab(cand.set=cmodelList2,modnames=cnames2)
 
 
-
-
-# -------------------*
-# ---- Abundance ----
-# -------------------*
+# Predicted abundance based on best model
 
 camAbund <- predict(can2.eduC.cmodel, type = 'state')
 
@@ -725,40 +726,41 @@ cEduC <- camSiteAbund$eduC
 plot(cCan, cAbund)
 plot(cEduC, cAbund)
 
+# Everything below this point is commented out
 
 
-# ---------------------------------------*
-# ----- Combine abundance estimates -----
-# ---------------------------------------*
-
-# Create dataframe of camera sites and abundances
-
-camSiteAbund <- sitesWithCovs %>%
-  filter(!site %in% removeSites) %>%
-  mutate(cCats = camAbund$Predicted) %>%
-  select(site, cCats)
-
-
-# Read in minimum individual data
-
-minInd <- read.csv('data/catMinIndividuals.csv') %>%
-  select(site, mCats)
-
-
-# Create dataframe of transect sites and predicted abundances
-
-siteAbund <- sitesWithCovs %>%
-  select(site) %>%
-  mutate(tCats = transAbund$Predicted) %>%
-  left_join(camSiteAbund, by = 'site') %>%
-  left_join(minInd, by = 'site')
-
-
-# Write to csv file for use in survival analysis
-
-write.csv(siteAbund, 'data/catAbund.csv', row.names = FALSE)
-
-
+# # ---------------------------------------*
+# # ----- Combine abundance estimates -----
+# # ---------------------------------------*
+# 
+# # Create dataframe of camera sites and abundances
+# 
+# camSiteAbund <- sitesWithCovs %>%
+#   filter(!site %in% removeSites) %>%
+#   mutate(cCats = camAbund$Predicted) %>%
+#   select(site, cCats)
+# 
+# 
+# # Read in minimum individual data
+# 
+# minInd <- read.csv('data/catMinIndividuals.csv') %>%
+#   select(site, mCats)
+# 
+# 
+# # Create dataframe of transect sites and predicted abundances
+# 
+# siteAbund <- sitesWithCovs %>%
+#   select(site) %>%
+#   mutate(tCats = transAbund$Predicted) %>%
+#   left_join(camSiteAbund, by = 'site') %>%
+#   left_join(minInd, by = 'site')
+# 
+# 
+# # Write to csv file for use in survival analysis
+# 
+# write.csv(siteAbund, 'data/catAbund.csv', row.names = FALSE)
+# 
+# 
 
 
 
@@ -817,81 +819,24 @@ write.csv(siteAbund, 'data/catAbund.csv', row.names = FALSE)
 #         axis.line.x = element_line(linetype='solid', color='black'),
 #         axis.line.y = element_line(linetype='solid', color='black'))
 
-# ----------------------------------------------------*
-# ---- Minimum number of individuals ----
-# ----------------------------------------------------*
 
-na.zero <- function(x){
-  x[is.na(x)] <- 0
-  return(x)
-}
-
-transInds <- catTransect %>%
-  filter(species == 'cat' & count == 1) %>%
-  select(site, notes) %>%
-  unique
-
-transInds$site <- as.character(transInds$site)
-transInds$notes <- as.character(transInds$notes)
-
-
-camInds <- catCam %>%
-  filter(species == 'cat' & count == 1) %>%
-  select(site, note) %>%
-  rename(notes = note) %>%
-  unique
-
-camInds$site <- as.character(camInds$site)
-camInds$notes <- as.character(camInds$notes)
-
-
-totalInds <- union(camInds, transInds) %>%
-  arrange(by = site) %>%
-  filter(notes != '')
-
-sites <- catSiteActivity %>%
-  select(site) %>%
-  unique
-
-totalIndsPerSite <- data.frame(table(totalInds$site)) %>%
-  rename(site = Var1, inds = Freq) %>%
-  full_join(sites, by = 'site') %>%
-  na.zero() %>%
-  arrange(by = site)
-
-camIndsPerSite <- data.frame(table(camInds$site)) %>%
-  rename(site = Var1, inds = Freq) %>%
-  full_join(sites, by = 'site') %>%
-  na.zero() %>%
-  arrange(by = site)
-
-transIndsPerSite <- data.frame(table(transInds$site)) %>%
-  rename(site = Var1, inds = Freq) %>%
-  full_join(sites, by = 'site') %>%
-  na.zero() %>%
-  arrange(by = site)
-
-indsPerSite <- left_join(totalIndsPerSite, camIndsPerSite, by = 'site') %>%
-  left_join(transIndsPerSite, by = 'site') %>%
-  rename(total = inds.x, camera = inds.y, transect = inds)
-
-# -------------*
-# ---- PLOT ----
-# -------------*
-
-sitesImp <- select(sitesWithCovs, site, imp)
-
-indsImpData <- indsPerSite %>%
-  left_join(sitesImp, by = 'site')
-
-indsImpData$site <- as.factor(indsImpData$site)
-
-ggplot(data = indsImpData, aes(x = imp, y = total))+
-  geom_point(size = 2)+
-  theme(panel.grid = element_blank(), 
-        axis.line.x = element_line(linetype='solid', color='black'),
-        axis.line.y = element_line(linetype='solid', color='black'))
-  
-  
-  
+# # -------------*
+# # ---- PLOT ----
+# # -------------*
+# 
+# sitesImp <- select(sitesWithCovs, site, imp)
+# 
+# indsImpData <- indsPerSite %>%
+#   left_join(sitesImp, by = 'site')
+# 
+# indsImpData$site <- as.factor(indsImpData$site)
+# 
+# ggplot(data = indsImpData, aes(x = imp, y = total))+
+#   geom_point(size = 2)+
+#   theme(panel.grid = element_blank(), 
+#         axis.line.x = element_line(linetype='solid', color='black'),
+#         axis.line.y = element_line(linetype='solid', color='black'))
+#   
+#   
+#   
   

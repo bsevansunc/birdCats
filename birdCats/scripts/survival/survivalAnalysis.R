@@ -9,9 +9,8 @@ removeSites <- c('GERYERIMD1', 'OLONMARDC1', 'MISSEDDC1', 'WOLFKARDC1', 'WOLFAMY
 data <- read_csv('data/ch.csv')
 
 
-# Filter out individuals of unknown sex and body condition, add imp^2
+# Filter out individuals of unknown sex and body condition
 bird.t <- data %>%
-  mutate(imp2 = imp^2) %>%
   filter(
     !is.na(bci),
     age != "U" & age != 'HY',
@@ -19,13 +18,20 @@ bird.t <- data %>%
   as.data.frame
 
 bird.c <- data %>%
-  mutate(imp2 = imp^2) %>%
   filter(
     !is.na(bci),
     age != "U" & age != 'HY',
     sex != 'U',
     !site %in% removeSites) %>%
   as.data.frame
+
+
+# # Scales cCats; for testing scaled versus unscaled:
+# test <- bird.c %>% select(site,cCats) %>% unique
+# test$cCats <- scale(test$cCats)[,1]
+# bird.c <- bird.c %>% select(-cCats)
+# bird.c <- left_join(bird.c,test,by='site')
+
 
 
 # Set sex as a factor with levels 'M' and 'F'
@@ -93,85 +99,85 @@ sosp.c.ddl <- make.design.data(sosp.c.proc, parameters = design.parameters)
 
 
 
-# Model parameters
+# Functions that fit fourteen different models to transect, camera data
 
 fit.models.t <- function(proc,ddl){
-  
-Phi.dot <- list(formula = ~1)
-Phi.trans <- list(formula = ~tCats)
-Phi.sexTrans <- list(formula = ~sex+tCats)
-
-Phi.one <- list(formula = ~sex)
-Phi.two <- list(formula = ~bci)
-Phi.three <- list(formula = ~sex+bci)
-Phi.four <- list(formula = ~sex+bci+sex*bci)
-Phi.five <- list(formula = ~sex+bci+imp)
-Phi.five.b <- list(formula = ~sex+bci+can)
-Phi.six <- list(formula = ~sex+bci+imp+imp2)
-Phi.six.b <- list(formula = ~sex+bci+can+can2)
-Phi.seven <- list(formula = ~sex+bci+sex*bci+imp)
-Phi.seven.b <- list(formula = ~sex+bci+sex*bci+can)
-Phi.eight <- list(formula = ~sex+bci+sex*bci+imp+imp2)
-Phi.eight.b <- list(formula = ~sex+bci+sex*bci+can+can2)
-
-Phi.nine <- list(formula = ~sex+bci+tCats)
-Phi.ten <- list(formula = ~sex+bci+tCats+sex*tCats)
-Phi.eleven <- list(formula = ~sex+bci+tCats+bci*tCats)
-Phi.twelve <- list(formula = ~sex+bci+tCats+sex*tCats+bci*tCats)
-Phi.thirteen <- list(formula = ~imp+sex+bci+tCats+sex*tCats+bci*tCats)
-Phi.thirteen.b <- list(formula = ~can+sex+bci+tCats+sex*tCats+bci*tCats)
-Phi.fourteen <- list(formula = ~imp+sex+bci+tCats+sex*tCats+bci*tCats+imp2)
-Phi.fourteen.b <- list(formula = ~can+sex+bci+tCats+sex*tCats+bci*tCats+can2)
-
-
-p.sex <- list(formula = ~sex)
-
-cml <- create.model.list(c("Phi","p"))
-
-results <- crm.wrapper(cml,data=proc,ddl=ddl,external=FALSE,accumulate=FALSE)
-
-return(results)
-}
-
-fit.models.c <- function(proc,ddl){
-  
   Phi.dot <- list(formula = ~1)
-  Phi.trans <- list(formula = ~cCats)
-  Phi.sexTrans <- list(formula = ~sex+cCats)
   
   Phi.one <- list(formula = ~sex)
-  Phi.two <- list(formula = ~bci)
-  Phi.three <- list(formula = ~sex+bci)
-  Phi.four <- list(formula = ~sex+bci+sex*bci)
-  Phi.five <- list(formula = ~sex+bci+imp)
-  Phi.five.b <- list(formula = ~sex+bci+can)
-  Phi.six <- list(formula = ~sex+bci+imp+imp2)
-  Phi.six.b <- list(formula = ~sex+bci+can+can2)
-  Phi.seven <- list(formula = ~sex+bci+sex*bci+imp)
-  Phi.seven.b <- list(formula = ~sex+bci+sex*bci+can)
-  Phi.eight <- list(formula = ~sex+bci+sex*bci+imp+imp2)
-  Phi.eight.b <- list(formula = ~sex+bci+sex*bci+can+can2)
+  Phi.two <- list(formula = ~sex*bci)
+  Phi.three <- list(formula = ~sex*bci + imp)
+  Phi.four <- list(formula = ~sex*bci + imp + imp2)
+  Phi.five <- list(formula = ~sex*bci + imp*sex)
+  Phi.six <- list(formula = ~sex*bci + imp*sex + imp2)
   
-  Phi.nine <- list(formula = ~sex+bci+cCats)
-  Phi.ten <- list(formula = ~sex+bci+cCats+sex*cCats)
-  Phi.eleven <- list(formula = ~sex+bci+cCats+bci*cCats)
-  Phi.twelve <- list(formula = ~sex+bci+cCats+sex*cCats+bci*cCats)
-  Phi.thirteen <- list(formula = ~imp+sex+bci+cCats+sex*cCats+bci*cCats)
-  Phi.thirteen.b <- list(formula = ~can+sex+bci+cCats+sex*cCats+bci*cCats)
-  Phi.fourteen <- list(formula = ~imp+sex+bci+cCats+sex*cCats+bci*cCats+imp2)
-  Phi.fourteen.b <- list(formula = ~can+sex+bci+cCats+sex*cCats+bci*cCats+can2)
+  Phi.seven <- list(formula= ~sex*tCats)
   
+  Phi.eight <- list(
+    formula= ~sex*bci + sex*tCats)
+  
+  Phi.nine <- list(
+    formula= ~sex*bci + sex*tCats + bci*tCats)
+  
+  Phi.ten <- list(
+    formula= ~sex*bci + sex*tCats + bci*tCats + imp*tCats)
+  
+  Phi.eleven <- list(
+    formula= ~sex*bci + sex*tCats + bci*tCats + imp*tCats + imp2)
+  
+  Phi.twelve <- list(
+    formula= ~sex*bci + sex*tCats + bci*tCats + imp*tCats + imp*sex)
+  
+  Phi.thirteen <- list(
+    formula= ~sex*bci + sex*tCats + bci*tCats + imp*tCats + imp*sex + imp2)
   
   p.sex <- list(formula = ~sex)
   
   cml <- create.model.list(c("Phi","p"))
-  
   results <- crm.wrapper(cml,data=proc,ddl=ddl,external=FALSE,accumulate=FALSE)
-  
   return(results)
 }
 
 
+fit.models.c <- function(proc,ddl){
+  Phi.dot <- list(formula = ~1)
+  
+  Phi.one <- list(formula = ~sex)
+  Phi.two <- list(formula = ~sex*bci)
+  Phi.three <- list(formula = ~sex*bci + imp)
+  Phi.four <- list(formula = ~sex*bci + imp + imp2)
+  Phi.five <- list(formula = ~sex*bci + imp*sex)
+  Phi.six <- list(formula = ~sex*bci + imp*sex + imp2)
+  
+  Phi.seven <- list(formula= ~sex*cCats)
+  
+  Phi.eight <- list(
+    formula= ~sex*bci + sex*cCats)
+  
+  Phi.nine <- list(
+    formula= ~sex*bci + sex*cCats + bci*cCats)
+  
+  Phi.ten <- list(
+    formula= ~sex*bci + sex*cCats + bci*cCats + imp*cCats)
+  
+  Phi.eleven <- list(
+    formula= ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp2)
+  
+  Phi.twelve <- list(
+    formula= ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp*sex)
+  
+  Phi.thirteen <- list(
+    formula= ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp*sex + imp2)
+  
+  p.sex <- list(formula = ~sex)
+  
+  cml <- create.model.list(c("Phi","p"))
+  results <- crm.wrapper(cml,data=proc,ddl=ddl,external=FALSE,accumulate=FALSE)
+  return(results)
+}
+
+
+# Fit the models
 
 amro.models.t <- fit.models.t(amro.t.proc,amro.t.ddl)
 cach.models.t <- fit.models.t(cach.t.proc,cach.t.ddl)

@@ -90,8 +90,8 @@ edu_df <- data.frame(
   GEOID = paste0(str_pad(edu@geography$state, 2, "left", pad="0"),
                  str_pad(edu@geography$county, 3, "left", pad="0"),
                  str_pad(edu@geography$tract, 6, "left", pad="0")),
-  eduHS = (edu@estimate[,17])/edu@estimate[,1],
-  eduC = (edu@estimate[,22])/edu@estimate[,1]
+  eduHS = (rowSums(edu@estimate[,17:25]))/edu@estimate[,1],
+  eduC = (rowSums(edu@estimate[,22:25]))/edu@estimate[,1]
 )
 
 
@@ -156,7 +156,7 @@ map
 
 # Get nestwatch sampling coordinates (spatial coordinates are in UTM):
 
-lc100 <- read.csv('lc100.csv')
+lc100 <- read.csv('data/lc100.csv')
 
 # Project nestwatch data:
 
@@ -164,7 +164,7 @@ utm <- SpatialPoints(cbind(lc100$X,lc100$Y), proj4string=CRS("+proj=utm +zone=18
 
 # Get a vector of cat sites:
 
-catSites <- read.csv('catDataCamera.csv') %>%
+catSites <- read.csv('data/catDataCamera.csv') %>%
   tbl_df %>%
   filter(!is.na(cat)) %>%
   select(site) %>%
@@ -258,5 +258,5 @@ hist(llData$medianIncome)
 
 # Write to file:
 
-write.csv(llDataCensus, 'covariateData.csv', row.names = FALSE)
+write.csv(llDataCensus, 'data/covariateData.csv', row.names = FALSE)
 

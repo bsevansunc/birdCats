@@ -227,24 +227,24 @@ can.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# median income
-
-income.model <- gdistsamp(
-  lambdaformula = ~ medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# age
-
-age.model <- gdistsamp(
-  lambdaformula = ~age,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
+# # median income
+# 
+# income.model <- gdistsamp(
+#   lambdaformula = ~ medianIncome,
+#   phiformula = ~ time,
+#   pformula = ~ dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
+# 
+# 
+# # age
+# 
+# age.model <- gdistsamp(
+#   lambdaformula = ~age,
+#   phiformula = ~time,
+#   pformula = ~dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
 
 
 # human density
@@ -257,70 +257,70 @@ density.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# married
-
-marred.model <- gdistsamp(
-  lambdaformula = ~marred,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# HS education
-
-eduHS.model <- gdistsamp(
-  lambdaformula = ~eduHS,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# C education
-
-eduC.model <- gdistsamp(
-  lambdaformula = ~eduC,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
+# # married
+# 
+# marred.model <- gdistsamp(
+#   lambdaformula = ~marred,
+#   phiformula = ~time,
+#   pformula = ~dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
+# 
+# 
+# # HS education
+# 
+# eduHS.model <- gdistsamp(
+#   lambdaformula = ~eduHS,
+#   phiformula = ~time,
+#   pformula = ~dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
+# 
+# 
+# # C education
+# 
+# eduC.model <- gdistsamp(
+#   lambdaformula = ~eduC,
+#   phiformula = ~time,
+#   pformula = ~dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
 
 
 
 # Additive
 
-# canopy + medianIncome
-
-can.income.model <- gdistsamp(
-  lambdaformula = ~ can+medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
-
-# imp + medianIncome
-
-imp.income.model <- gdistsamp(
-  lambdaformula = ~ imp+medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",  mixture="NB")
-
+# # canopy + medianIncome
+# 
+# can.income.model <- gdistsamp(
+#   lambdaformula = ~ can+medianIncome,
+#   phiformula = ~ time,
+#   pformula = ~ dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
+# 
+# 
+# # imp + medianIncome
+# 
+# imp.income.model <- gdistsamp(
+#   lambdaformula = ~ imp+medianIncome,
+#   phiformula = ~ time,
+#   pformula = ~ dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm",  mixture="NB")
+# 
 
 # Quadratic
 
-# income^2
-
-income2.model <- gdistsamp(
-  lambdaformula = ~ medianIncome+medianIncome2,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
-
+# # income^2
+# 
+# income2.model <- gdistsamp(
+#   lambdaformula = ~ medianIncome+medianIncome2,
+#   phiformula = ~ time,
+#   pformula = ~ dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
+# 
 
 
 # impervious^2
@@ -352,14 +352,14 @@ imp2.income.model <- gdistsamp(
   keyfun = "halfnorm", mixture="NB")
 
 
-# canopy^2 + medianIncome
-
-can2.income.model <- gdistsamp(
-  lambdaformula = ~ can+can2+medianIncome,
-  phiformula = ~ time,
-  pformula = ~ dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
+# # canopy^2 + medianIncome
+# 
+# can2.income.model <- gdistsamp(
+#   lambdaformula = ~ can+can2+medianIncome,
+#   phiformula = ~ time,
+#   pformula = ~ dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
 
 
 # hDensity^2
@@ -391,14 +391,14 @@ imp2.eduC.model <- gdistsamp(
   data = gUmfWithCovs,
   keyfun = "halfnorm", mixture="NB")
 
-# impervious^2 + income + C education
-
-imp2.income.eduC.model <- gdistsamp(
-  lambdaformula = ~imp+imp2+eduC+medianIncome,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm", mixture="NB")
+# # impervious^2 + income + C education
+# 
+# imp2.income.eduC.model <- gdistsamp(
+#   lambdaformula = ~imp+imp2+eduC+medianIncome,
+#   phiformula = ~time,
+#   pformula = ~dew*temp+time,
+#   data = gUmfWithCovs,
+#   keyfun = "halfnorm", mixture="NB")
 
 # impervious^2 + income^2
 
@@ -463,7 +463,7 @@ table2 <- aictab(cand.set=modelList2,modnames=names2)
 
 # Predicted abund values from best model
 
-transAbund <- predict(imp2.eduC.model, type="lambda", appenddata = TRUE)
+transAbund <- predict(imp2.eduHS.model, type="lambda", appenddata = TRUE)
 
 
 
@@ -472,21 +472,10 @@ transAbund <- predict(imp2.eduC.model, type="lambda", appenddata = TRUE)
 # ------ Visualize variables ------
 # ----------------------------------------------------------------*
 
-transSites <- covs %>%
-  select(site, imp, can, medianIncome, eduC,hDensity)
 
-transSiteAbund <- cbind.data.frame(transSites, transAbund$Predicted)
-can <- transSiteAbund$can
-imp <- transSiteAbund$imp
-inc <- transSiteAbund$medianIncome
-abund <- transAbund$Predicted
-edu <- transSiteAbund$eduC
-dens <- transSiteAbund$hDensity
 
-plot(imp, abund)
-plot(edu, abund)
-plot(inc, abund)
-plot(dens, abund)
+plot(covs$imp, transAbund$Predicted)
+plot(covs$eduHS, transAbund$Predicted)
 
 
 
@@ -585,37 +574,37 @@ density.cmodel <- pcount(
   formula = ~dewLow ~hDensity, 
   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-income.cmodel <- pcount(
-  formula = ~dewLow ~medianIncome,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-eduC.cmodel <- pcount(
-  formula = ~dewLow ~eduC,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-eduHS.cmodel <- pcount(
-  formula = ~dewLow ~eduHS,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-age.cmodel <- pcount(
-  formula = ~dewLow ~age,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-marred.cmodel <- pcount(
-  formula = ~dewLow ~marred,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
+# income.cmodel <- pcount(
+#   formula = ~dewLow ~medianIncome,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# eduC.cmodel <- pcount(
+#   formula = ~dewLow ~eduC,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# eduHS.cmodel <- pcount(
+#   formula = ~dewLow ~eduHS,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# age.cmodel <- pcount(
+#   formula = ~dewLow ~age,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# marred.cmodel <- pcount(
+#   formula = ~dewLow ~marred,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
 
 
 # Additive
 
-can.income.cmodel <- pcount(
-  formula = ~dewLow ~can + medianIncome,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-imp.income.cmodel <- pcount(
-  formula = ~dewLow ~imp + medianIncome,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
+# can.income.cmodel <- pcount(
+#   formula = ~dewLow ~can + medianIncome,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# imp.income.cmodel <- pcount(
+#   formula = ~dewLow ~imp + medianIncome,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
 
 
@@ -633,29 +622,29 @@ density2.cmodel <- pcount(
   formula = ~dewLow ~hDensity + hDensity2,
   data = camUmfWithCovs, mixture= 'NB', K = 50)
 
-age2.cmodel <- pcount(
-  formula = ~dewLow ~age+age2,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
-
-imp2.income.cmodel <- pcount(
-  formula = ~dewLow ~imp+imp2+medianIncome,
-  data = camUmfWithCovs, mixture='NB', K = 50)
+# age2.cmodel <- pcount(
+#   formula = ~dewLow ~age+age2,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
+# 
+# imp2.income.cmodel <- pcount(
+#   formula = ~dewLow ~imp+imp2+medianIncome,
+#   data = camUmfWithCovs, mixture='NB', K = 50)
 
 can2.income.cmodel <- pcount(
   formula = ~dewLow ~can + can2 + medianIncome,
   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-imp2.eduC.cmodel <- pcount(
-  formula = ~dewLow ~imp + imp2 + eduC,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
+# imp2.eduC.cmodel <- pcount(
+#   formula = ~dewLow ~imp + imp2 + eduC,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
 can2.eduC.cmodel <- pcount(
   formula = ~dewLow ~can + can2 + eduC,
   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
-imp2.eduHS.cmodel <- pcount(
-  formula = ~dewLow ~imp + imp2 + eduHS,
-  data = camUmfWithCovs, mixture = 'NB', K = 50)
+# imp2.eduHS.cmodel <- pcount(
+#   formula = ~dewLow ~imp + imp2 + eduHS,
+#   data = camUmfWithCovs, mixture = 'NB', K = 50)
 
 can2.eduHS.cmodel <- pcount(
   formula = ~dewLow ~can + can2 + eduHS,
@@ -707,24 +696,18 @@ ctable2 <- aictab(cand.set=cmodelList2,modnames=cnames2)
 
 # Predicted abundance based on best model
 
-camAbund <- predict(can2.eduC.cmodel, type = 'state')
+camAbund <- predict(can2.eduHS.cmodel, type = 'state')
 
 
 # -------------------------------------------------*
 # ------ Visualize variables ------
 # -------------------------------------------------*
 
-camSites <- camCovs %>%
-  select(site, can, imp, eduC)
+camSites <- covs %>% filter(!site %in% removeSites)
 
-camSiteAbund <- cbind.data.frame(camSites, camAbund)
-cCan <- camSiteAbund$can
-cAbund <- camSiteAbund$Predicted
-cImp <- camSiteAbund$imp
-cEduC <- camSiteAbund$eduC
+plot(camSites$eduHS, camAbund$Predicted)
+plot(camSites$can, camAbund$Predicted)
 
-plot(cCan, cAbund)
-plot(cEduC, cAbund)
 
 # Everything below this point is commented out
 

@@ -177,11 +177,11 @@ urban <- read_csv('data/covariateData.csv') %>%
   filter(site %in% band$site) %>%
   mutate(
     imp2 = imp^2,
-    can2 = can^2,
-    imp = scale(imp)[,1],
-    can = scale(can)[,1],
-    imp2 = scale(imp2)[,1],
-    can2 = scale(can2)[,1]
+    can2 = can^2
+#    ,imp = scale(imp)[,1],
+#    can = scale(can)[,1],
+#    imp2 = scale(imp2)[,1],
+#    can2 = scale(can2)[,1]
   )
 
 
@@ -194,22 +194,8 @@ band <- left_join(band, urban, by = 'site')
 # ---------------- Add cat variables -------------------------------
 # ------------------------------------------------------------------*
 
-# # Read in data
-# 
-# catAbund <- read.csv('data/catAbund.csv') %>%
-#   mutate(
-#     tCats = scale(tCats)[,1],
-#     cCats = scale(cCats)[,1],
-#     mCats = scale(mCats)[,1]
-#   )
-# 
-# 
-# # Add to band dataframe with other covariates
-# 
-# band <- left_join(band, catAbund, by = 'site')
-
-
 # Get camera data
+
 # All the data
 cam <- read.csv('data/catDataCamera.csv')
 
@@ -218,9 +204,11 @@ catCam <- cam %>%
   filter(species=='cat',
          note != 'Charlie, Sally') %>%
   group_by(site, note) %>%
-  summarise
+  dplyr::summarise()
+
 
 # Function that calculates number of unique individuals per site
+
 countCamInds <- function(df, df2){
   catList <- c()
   siteList <- as.data.frame(unique(as.character(df2$site)))
@@ -242,20 +230,23 @@ countCamInds <- function(df, df2){
   return(catList)
 }
 
-# Average individual cats per site per deployment
+
+# Average cats per deployment by site
+
 cCats <- countCamInds(catCam,cam) %>%
   mutate(cCats = cCats/3)
-# The following line is commented out because scaling resulted in model issues
 #  %>% mutate(cCats = scale(cCats)[,1])
+
 
 band <- left_join(band,cCats,by='site')
 
 
-# Get averaged transect counts
+# Get transect data
 
 trans <- read.csv('data/catDataTransect.csv') %>%
   filter(!is.na(count), species == 'cat') %>%
   mutate(site = as.character(site))
+
 
 # Function that sums counts by site, averaged over all visits
 
@@ -273,10 +264,14 @@ countTransInds <- function(df){
   return(sitesCounts)
 }
 
+
+# Average cats per transect by site
+
 tCats <- countTransInds(trans) %>%
   select(site,tCats) %>%
   mutate(tCats = tCats/6)
 #  %>% mutate(tCats = scale(tCats)[,1])
+
 
 band <- left_join(band, tCats, by = 'site')
 
@@ -339,7 +334,7 @@ captureHistories <- bind_rows(
 
 birdData <- left_join(band,captureHistories, by = 'bandNumber') %>%
 #  left_join(yearActive, by = 'bandNumber') %>%
-  rename(bandDate = date, bandYear = year)
+  dplyr::rename(bandDate = date, bandYear = year)
 
 # Writes to file for survival analysis
 

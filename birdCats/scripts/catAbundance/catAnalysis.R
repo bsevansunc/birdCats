@@ -16,7 +16,7 @@ smartLibrary <- function(packageVector){
   lapply(packageVector, library, character.only = TRUE)
 }
 
-smartLibrary(c('unmarked', 'dplyr', 'tidyr', 'camtrapR', 'ggplot2', 'AICcmodavg'))
+smartLibrary(c('unmarked', 'dplyr', 'tidyr', 'camtrapR', 'ggplot2', 'AICcmodavg','MuMIn'))
 
 
 options(stringsAsFactors = F)
@@ -460,6 +460,18 @@ names2 <- c('imp2','imp2.age','imp2.income','imp2.income2','imp2.marred','imp2.a
 
 table2 <- aictab(cand.set=modelList2,modnames=names2)
 
+tAvg <- model.avg(modelList2)
+tWeight <- tAvg$msTable$weight
+seImp <- tAvg$coefArray[,2,2]
+seImp2 <- tAvg$coefArray[,2,3]
+
+seImpWt <- seImp*tWeight
+seImp2Wt <- seImp2*tWeight
+
+sum(seImpWt)
+sum(seImp2Wt)
+
+
 
 # Predicted abund values from best model
 
@@ -692,6 +704,17 @@ cnames2 <- c('can2','can2.age','can2.income','can2.income2','can2.marred',
              'can2.age2','can2.eduHS','can2.eduC')
 
 ctable2 <- aictab(cand.set=cmodelList2,modnames=cnames2)
+
+cAvg <- model.avg(cmodelList2)
+cWeight <- cAvg$msTable$weight
+seCan <- cAvg$coefArray[,2,2]
+seCan2 <- cAvg$coefArray[,2,3]
+
+seCanWt <- seCan*tWeight
+seCan2Wt <- seCan2*tWeight
+
+sum(seCanWt)
+sum(seCan2Wt)
 
 
 # Predicted abundance based on best model

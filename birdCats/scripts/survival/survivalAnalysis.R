@@ -1,131 +1,162 @@
+#--------------------------------------------------------------------*
+# ---- Set up ----
+#--------------------------------------------------------------------*
+
 library('tidyverse')
 library('marked')
 library('stringr')
 
-removeSites <- c('GERYERIMD1', 'OLONMARDC1', 'MISSEDDC1', 'WOLFKARDC1', 'WOLFAMYDC1')
+removeSites <- c('GERYERIMD1', 'OLONMARDC1', 'MISSEDDC1',
+                 'WOLFKARDC1', 'WOLFAMYDC1')
 
-# Read in data
+# Read and format data:
 
-data <- read_csv('data/ch.csv')
-
-
-# Filter out individuals of unknown sex and body condition
-
-bird.c <- data %>%
+data <- read_csv('data/ch.csv') %>%
+  tbl_df %>%
   filter(
-    !is.na(bci),
-    age != "U" & age != 'HY',
-    sex != 'U',
-    !site %in% removeSites) %>%
-  as.data.frame
+    age %in% c('AHY', 'SY', 'ASY'),
+    sex %in% c('M', 'F'),
+    !site %in% removeSites)  %>%
+  na.omit %>%
+  mutate(sex = as.factor(sex)) %>%
+  select(ch, bandYear, age, sex, species, bci:tCats)
 
+#--------------------------------------------------------------------*
+# ---- Functions ----
+#--------------------------------------------------------------------*
 
-# Scales covs; for testing scaled versus unscaled
-# (messy, I know, but they do have to be scaled outside the full dataframe)
+# Function to scale covariates:
 
-cCatsScale <- bird.c %>% select(site,cCats) %>% unique
-cCatsScale$cCats <- scale(cCatsScale$cCats)[,1]
-bird.c <- bird.c %>% select(-cCats)
-bird.c <- left_join(bird.c,cCatsScale,by='site')
+scaleCov <- function(cov){
+  scale(cov)[,1]
+}
 
-tCatsScale <- bird.c %>% select(site,tCats) %>% unique
-tCatsScale$tCats <- scale(tCatsScale$tCats)[,1]
-bird.c <- bird.c %>% select(-tCats)
-bird.c <- left_join(bird.c,tCatsScale,by='site')
+# Function to get frame for a given species:
 
-impScale <- bird.c %>% select(site,imp) %>% unique
-impScale$imp <- scale(impScale$imp)[,1]
-bird.c <- bird.c %>% select(-imp)
-bird.c <- left_join(bird.c,impScale,by='site')
+getSppFrame <- function(data, spp, catVar, scaled = TRUE){
+  sppData <- data %>%
+    filter(species == spp) %>%
+    mutate_(cat = catVar) %>%
+    select(-c(cCats, tCats))
+  if(scaled == TRUE){
+    sppData <- bind_cols(
+      sppData %>%
+        select(ch:bci),
+      sppData %>%
+        select(imp:tCats) %>%
+        mutate_all(scaleCov)
+    )
+  }
+  return(sppData)
+}
 
-imp2Scale <- bird.c %>% select(site,imp2) %>% unique
-imp2Scale$imp2 <- scale(imp2Scale$imp2)[,1]
-bird.c <- bird.c %>% select(-imp2)
-bird.c <- left_join(bird.c,imp2Scale,by='site')
+# Function to fit models, camera:
 
-
-
-# Set sex as a factor with levels 'M' and 'F'
-
-bird.c$sex <- as.factor(bird.c$sex)
-
-
-# By species
-
-grca.c <- bird.c %>% filter(species == 'GRCA')
-
-
-# Process the data
-
-grca.c.proc <- process.data(grca.c, groups = "sex")
-
-
-# Design parameters
-design.Phi <- list(static=c('imp','sex','bci','imp2', 'can', 'can2', 'tCats','cCats'))
-design.p <- list(static = c('sex'))
-design.parameters <- list(Phi = design.Phi, p = design.p)
-
-grca.c.ddl <- make.design.data(grca.c.proc, parameters = design.parameters)
-
-
-
-
-fit.models.c <- function(proc,ddl){
+fitModels <- function(data, spp, catVar, scaled = FALSE){
+  # Design parameters:
+  design.parameters <- list(
+    Phi = list(static = c('imp','sex','bci',
+                          'can', 'cat')),
+    p = list(static = c('sex')))
+  # Data input:
+  proc <- getSppFrame(data, spp, catVar, scaled) %>%
+    data.frame %>%
+    process.data
+  ddl <- make.design.data(proc, design.parameters)
+  # Models for Phi parameter:
   Phi.dot <- list(formula = ~1)
-  # Additive
-  Phi.1 <- list(formula = ~sex)
-  Phi.2 <- list(formula = ~sex + bci)
-  Phi.3 <- list(formula = ~sex + bci + imp)
-  Phi.4 <- list(formula = ~sex + bci + imp + imp2)
+  # Additive, no cats:
+  Phi.1 <- list(formula = ~sex + bci)
+  Phi.2 <- list(formula = ~sex + bci + imp)
+  Phi.3 <- list(formula = ~sex + bci + can)
+  Phi.4 <- list(formula = ~sex + bci + imp + can)
   # Cat additive
-  Phi.5 <- list(formula = ~sex + cCats)
-  Phi.6 <- list(formula = ~sex + bci + cCats)
-  Phi.7 <- list(formula = ~sex + bci + cCats + imp)
-  Phi.8 <- list(formula = ~sex + bci + cCats + imp +imp2)
-  
-  # Interactions
-  Phi.9 <- list(formula = ~sex*bci)
-  Phi.10 <- list(formula = ~sex*bci + imp)
-  Phi.11 <- list(formula = ~sex*bci + imp + imp2)
-  Phi.12 <- list(formula = ~bci + imp*sex)
-  Phi.13 <- list(formula = ~bci + imp*sex + imp2)
-  Phi.14 <- list(formula = ~sex*bci + imp*sex)
-  Phi.15 <- list(formula = ~sex*bci + imp*sex + imp2)
-  # Cat interactions
-  Phi.16 <- list(formula = ~sex*bci + cCats)
-  Phi.17 <- list(formula = ~sex*bci + imp*cCats)
-  Phi.18 <- list(formula = ~sex*bci + imp*cCats + imp2)
-  Phi.19 <- list(formula = ~bci + sex*cCats)
-  Phi.20 <- list(formula = ~sex + bci*cCats)
-  Phi.21 <- list(formula = ~sex*cCats + bci*cCats)
-  Phi.22 <- list(formula = ~bci + sex*cCats + imp*cCats)
-  Phi.23 <- list(formula = ~sex + bci*cCats + imp*cCats)
-  Phi.24 <- list(formula = ~sex*cCats + bci*cCats + imp*cCats)
-  Phi.25 <- list(formula = ~bci + sex*cCats + imp*cCats + imp2)
-  Phi.26 <- list(formula = ~sex + bci*cCats + imp*cCats + imp2)
-  Phi.27 <- list(formula = ~sex*cCats + bci*cCats + imp*cCats + imp2)
-  Phi.28 <- list(formula = ~bci + sex*cCats + imp*sex + cCats*imp)
-  Phi.29 <- list(formula = ~sex + bci*cCats + imp*sex + cCats*imp)
-  Phi.30 <- list(formula = ~sex*cCats + bci*cCats + imp*sex + cCats*imp)
-  Phi.31 <- list(formula = ~bci + sex*cCats + imp*sex + cCats*imp + imp2)
-  Phi.32 <- list(formula = ~sex + bci*cCats + imp*sex + cCats*imp + imp2)
-  Phi.33 <- list(formula = ~sex*cCats + bci*cCats + imp*sex + cCats*imp + imp2)
-  Phi.34 <- list(formula = ~sex*bci + sex*cCats + bci*cCats + imp*cCats)
-  Phi.35 <- list(formula = ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp2)
-  Phi.36 <- list(formula = ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp*sex)
-  Phi.37 <- list(formula = ~sex*bci + sex*cCats + bci*cCats + imp*cCats + imp*sex*imp2)
-  
+  Phi.5 <- list(formula = ~sex + bci + cat)
+  Phi.5 <- list(formula = ~sex + bci + cat + imp)
+  Phi.6 <- list(formula = ~sex + bci + cat + can)
+  Phi.7 <- list(formula = ~sex + bci + cat + imp + can)
+  # sex cat interaction
+  Phi.8 <- list(formula = ~sex*cat + bci)
+  Phi.9 <- list(formula = ~sex*cat + bci + imp)
+  Phi.10 <- list(formula = ~sex*cat + bci + can)
+  Phi.11 <- list(formula = ~sex*cat + bci + imp + can)
+  # bci cat interaction
+  Phi.11 <- list(formula = ~bci*cat + sex)
+  Phi.12 <- list(formula = ~bci*cat + sex + imp)
+  Phi.13 <- list(formula = ~bci*cat + sex + can)
+  Phi.14 <- list(formula = ~bci*cat + sex + imp + can)
+  # imp cat interaction
+  Phi.15 <- list(formula = ~imp*cat + sex + bci)
+  Phi.16 <- list(formula = ~imp*cat + sex + bci + can)
+  # can cat interaction
+  Phi.17 <- list(formula = ~can*cat + sex + bci)
+  Phi.18 <- list(formula = ~can*cat + sex + bci + imp)
+  # imp*can interactions
+  Phi.19 <- list(formula = ~imp*can + sex + bci)
+  Phi.20 <- list(formula = ~imp*can + sex + bci + cat)
+  Phi.21 <- list(formula = ~imp*can*cat + sex + bci)
+  # Model for p parameter
+  p.dot <- list(formula = ~1)
   p.sex <- list(formula = ~sex)
-  
   cml <- create.model.list(c("Phi","p"))
-  results <- crm.wrapper(cml,data=proc,ddl=ddl,external=FALSE,accumulate=FALSE)
+  results <- crm.wrapper(cml,data=proc,ddl=ddl,
+                         external=FALSE,accumulate=FALSE)
   return(results)
 }
 
 
-# Fit the models
+#--------------------------------------------------------------------*
+# ---- Model running ----
+#--------------------------------------------------------------------*
 
-grca.models.c <- fit.models.c(grca.c.proc,grca.c.ddl)
+# Fit the models:
+
+sppVector <- data$species %>% unique %>% sort
+
+modelListSppCamera <- vector('list', length = length(sppVector))
+modelListSppTransect <- vector('list', length = length(sppVector))
+
+names(modelListSppCamera) <- sppVector
+names(modelListSppTransect) <- sppVector
+
+
+for(i in 1:length(sppVector)){
+  modelListSppCamera[[i]] <- fitModels(
+    data,
+    spp = sppVector[i],
+    catVar = 'cCats',
+    scaled = FALSE)
+  modelListSppTransect[[i]] <- fitModels(
+    data,
+    spp = sppVector[i],
+    catVar = 'tCats',
+    scaled = FALSE)
+}
+
+# Example output:
+
+modelListSppCamera$GRCA
+
+modelListSppCamera$GRCA$Phi.21.p.dot
+
+modelListSppCamera$SOSP$Phi.7.p.sex
+
+modelListSppCamera$SOSP$Phi.7.p.sex$results$reals$Phi %>%
+  ggplot(aes(x = cat, y = estimate)) +
+  geom_point(cex = 3, alpha = .5) +
+  theme_bw()
+
+modelListSppCamera$GRCA$Phi.7.p.sex$results$reals$Phi %>%
+  ggplot(aes(x = cat, y = estimate)) +
+  geom_point(cex = 3, alpha = .5) +
+  theme_bw()
+
+
+
+
+
+
+
 
 
 

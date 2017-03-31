@@ -12,14 +12,15 @@ removeSites <- c('GERYERIMD1', 'OLONMARDC1', 'MISSEDDC1',
 # Read and format data:
 
 data <- read_csv('data/ch.csv') %>%
-  tbl_df %>%
   filter(
     age %in% c('AHY', 'SY', 'ASY'),
-    sex %in% c('M', 'F'),
-    !site %in% removeSites)  %>%
-  na.omit %>%
+    sex %in% c('M','F'),
+    !is.na(bci)) %>%
+  as.data.frame() %>%
   mutate(sex = as.factor(sex)) %>%
   select(ch, bandYear, age, sex, species, bci:tCats)
+
+
 
 #--------------------------------------------------------------------*
 # ---- Functions ----
@@ -32,6 +33,8 @@ scaleCov <- function(cov){
 }
 
 # Function to get frame for a given species:
+# Issue with this that I'll fix later--if you scale inside the full
+# frame, I think the means and stdevs will be off.
 
 getSppFrame <- function(data, spp, catVar, scaled = TRUE){
   sppData <- data %>%
@@ -56,45 +59,61 @@ fitModels <- function(data, spp, catVar, scaled = FALSE){
   # Design parameters:
   design.parameters <- list(
     Phi = list(static = c('imp','sex','bci',
-                          'can', 'cat')),
+                          'can', 'cat','imp2')),
     p = list(static = c('sex')))
   # Data input:
   proc <- getSppFrame(data, spp, catVar, scaled) %>%
     data.frame %>%
-    process.data
+    process.data(groups="sex")
   ddl <- make.design.data(proc, design.parameters)
+  
   # Models for Phi parameter:
   Phi.dot <- list(formula = ~1)
   # Additive, no cats:
   Phi.1 <- list(formula = ~sex + bci)
   Phi.2 <- list(formula = ~sex + bci + imp)
-  Phi.3 <- list(formula = ~sex + bci + can)
-  Phi.4 <- list(formula = ~sex + bci + imp + can)
+  Phi.3 <- list(formula = ~sex + bci + imp + imp2)
+  Phi.4 <- list(formula = ~sex + bci + can)
+  Phi.5 <- list(formula = ~sex + bci + imp + can)
+  Phi.6 <- list(formula = ~sex + bci + imp + can + imp2)
   # Cat additive
-  Phi.5 <- list(formula = ~sex + bci + cat)
-  Phi.5 <- list(formula = ~sex + bci + cat + imp)
-  Phi.6 <- list(formula = ~sex + bci + cat + can)
-  Phi.7 <- list(formula = ~sex + bci + cat + imp + can)
+  Phi.7 <- list(formula = ~sex + bci + cat)
+  Phi.8 <- list(formula = ~sex + bci + cat + imp)
+  Phi.9 <- list(formula = ~sex + bci + cat + imp + imp2)
+  Phi.10 <- list(formula = ~sex + bci + cat + can)
+  Phi.11 <- list(formula = ~sex + bci + cat + imp + can)
+  Phi.12 <- list(formula = ~sex + bci + cat + imp + can + imp2)
   # sex cat interaction
-  Phi.8 <- list(formula = ~sex*cat + bci)
-  Phi.9 <- list(formula = ~sex*cat + bci + imp)
-  Phi.10 <- list(formula = ~sex*cat + bci + can)
-  Phi.11 <- list(formula = ~sex*cat + bci + imp + can)
+  Phi.13 <- list(formula = ~sex*cat + bci)
+  Phi.14 <- list(formula = ~sex*cat + bci + imp)
+  Phi.15 <- list(formula = ~sex*cat + bci + imp + imp2)
+  Phi.16 <- list(formula = ~sex*cat + bci + can)
+  Phi.17 <- list(formula = ~sex*cat + bci + imp + can)
+  Phi.18 <- list(formula = ~sex*cat + bci + imp + can + imp2)
   # bci cat interaction
-  Phi.11 <- list(formula = ~bci*cat + sex)
-  Phi.12 <- list(formula = ~bci*cat + sex + imp)
-  Phi.13 <- list(formula = ~bci*cat + sex + can)
-  Phi.14 <- list(formula = ~bci*cat + sex + imp + can)
+  Phi.19 <- list(formula = ~bci*cat + sex)
+  Phi.20 <- list(formula = ~bci*cat + sex + imp)
+  Phi.21 <- list(formula = ~bci*cat + sex + imp + imp2)
+  Phi.22 <- list(formula = ~bci*cat + sex + can)
+  Phi.23 <- list(formula = ~bci*cat + sex + imp + can)
+  Phi.24 <- list(formula = ~bci*cat + sex + imp + can + imp2)
   # imp cat interaction
-  Phi.15 <- list(formula = ~imp*cat + sex + bci)
-  Phi.16 <- list(formula = ~imp*cat + sex + bci + can)
+  Phi.25 <- list(formula = ~imp*cat + sex + bci)
+  Phi.26 <- list(formula = ~imp*cat + sex + bci + imp2)
+  Phi.27 <- list(formula = ~imp*cat + sex + bci + can)
+  Phi.28 <- list(formula = ~imp*cat + sex + bci + can + imp2)
   # can cat interaction
-  Phi.17 <- list(formula = ~can*cat + sex + bci)
-  Phi.18 <- list(formula = ~can*cat + sex + bci + imp)
+  Phi.29 <- list(formula = ~can*cat + sex + bci)
+  Phi.30 <- list(formula = ~can*cat + sex + bci + imp)
+  Phi.31 <- list(formula = ~can*cat + sex + bci + imp + imp2)
   # imp*can interactions
-  Phi.19 <- list(formula = ~imp*can + sex + bci)
-  Phi.20 <- list(formula = ~imp*can + sex + bci + cat)
-  Phi.21 <- list(formula = ~imp*can*cat + sex + bci)
+  Phi.32 <- list(formula = ~imp*can + sex + bci)
+  Phi.33 <- list(formula = ~imp*can + sex + bci + imp2)
+  # imp*can interactions plus cats
+  Phi.34 <- list(formula = ~imp*can + sex + bci + cat)
+  Phi.35 <- list(formula = ~imp*can + sex + bci + cat + imp2)
+  Phi.36 <- list(formula = ~imp*can*cat + sex + bci)
+  Phi.37 <- list(formula = ~imp*can*cat + sex + bci + imp2)
   # Model for p parameter
   p.dot <- list(formula = ~1)
   p.sex <- list(formula = ~sex)
@@ -111,7 +130,7 @@ fitModels <- function(data, spp, catVar, scaled = FALSE){
 
 # Fit the models:
 
-sppVector <- data$species %>% unique %>% sort
+sppVector <- dataTrans$species %>% unique %>% sort
 
 modelListSppCamera <- vector('list', length = length(sppVector))
 modelListSppTransect <- vector('list', length = length(sppVector))
@@ -122,7 +141,7 @@ names(modelListSppTransect) <- sppVector
 
 for(i in 1:length(sppVector)){
   modelListSppCamera[[i]] <- fitModels(
-    data,
+    filter(data, !site %in% removeSites),
     spp = sppVector[i],
     catVar = 'cCats',
     scaled = FALSE)
@@ -132,6 +151,25 @@ for(i in 1:length(sppVector)){
     catVar = 'tCats',
     scaled = FALSE)
 }
+
+
+# Function that calculates the weighted betas for a given sp and cov
+
+weightedBeta <- function(modellist, spp, cov){
+  betas <- vector('numeric',length=76)
+  for(i in 1:76){
+    betas[i] <- modellist[[spp]][[i]]$results$beta$Phi[cov]
+  }
+  
+  table <- model.table(modellist[[spp]])
+  table$index <- as.numeric(row.names(table))
+  table <- table[order(table$index),]
+  
+  return(sum(na.omit(table$weight*betas)[1:length(na.omit(betas))]))
+}
+
+
+
 
 # Example output:
 
@@ -152,9 +190,7 @@ modelListSppCamera$GRCA$Phi.7.p.sex$results$reals$Phi %>%
   theme_bw()
 
 
-
-
-
+weightedBeta(modelListSppCamera, 'SOSP', 'cat')
 
 
 

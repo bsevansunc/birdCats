@@ -130,7 +130,7 @@ fitModels <- function(data, spp, catVar, scaled = FALSE){
 
 # Fit the models:
 
-sppVector <- dataTrans$species %>% unique %>% sort
+sppVector <- data$species %>% unique %>% sort
 
 modelListSppCamera <- vector('list', length = length(sppVector))
 modelListSppTransect <- vector('list', length = length(sppVector))

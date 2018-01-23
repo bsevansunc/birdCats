@@ -277,6 +277,18 @@ band <- left_join(band, tCats, by = 'site')
 
 
 
+# Read in min individuals
+
+mCats <- read.csv('data/catMinIndividuals.csv') %>%
+  select(site,mCats)
+
+band <- left_join(band, mCats, by = 'site')
+
+
+
+
+
+
 # --------------------------------------------------------------------*
 # ------------ Identify sites as active or inactive ------------------
 # --------------------------------------------------------------------*

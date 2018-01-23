@@ -5,6 +5,8 @@
 library('tidyverse')
 library('marked')
 library('stringr')
+library('AICcmodavg')
+library('MuMIn')
 
 removeSites <- c('GERYERIMD1', 'OLONMARDC1', 'MISSEDDC1',
                  'WOLFKARDC1', 'WOLFAMYDC1')
@@ -17,8 +19,10 @@ data <- read_csv('data/ch.csv') %>%
     sex %in% c('M','F'),
     !is.na(bci)) %>%
   as.data.frame() %>%
-  mutate(sex = as.factor(sex)) %>%
-  select(ch, bandYear, age, sex, species, bci:tCats)
+  mutate(sex = as.factor(sex),
+         cCats = cCats*3,
+         tCats = tCats*6) %>%
+  select(ch, bandNumber,site, bandYear, age, sex, species, bci:tCats)
 
 
 
@@ -28,8 +32,33 @@ data <- read_csv('data/ch.csv') %>%
 
 # Function to scale covariates:
 
-scaleCov <- function(cov){
-  scale(cov)[,1]
+scaleCovs <- function(data){
+  imp <- data %>% select(site,imp) %>% distinct()
+  imp$imp <- scale(imp$imp)[,1]
+  data <- data %>% select(-imp)
+  data <- left_join(data, imp, by = 'site')
+  
+  imp2 <- data %>% select(site,imp2) %>% distinct()
+  imp2$imp2 <- scale(imp2$imp2)[,1]
+  data <- data %>% select(-imp2)
+  data <- left_join(data, imp2, by = 'site')
+  
+  can <- data %>% select(site,can) %>% distinct()
+  can$can <- scale(can$can)[,1]
+  data <- data %>% select(-can)
+  data <- left_join(data, can, by = 'site')
+  
+  can2 <- data %>% select(site,can2) %>% distinct()
+  can2$can2 <- scale(can2$can2)[,1]
+  data <- data %>% select(-can2)
+  data <- left_join(data, can2, by = 'site')
+  
+  cats <- data %>% select(site,cat) %>% distinct()
+  cats$cat <- scale(cats$cat)[,1]
+  data <- data %>% select(-cat)
+  data <- left_join(data, cats, by = 'site')
+  
+  return(data)
 }
 
 # Function to get frame for a given species:
@@ -40,15 +69,9 @@ getSppFrame <- function(data, spp, catVar, scaled = TRUE){
   sppData <- data %>%
     filter(species == spp) %>%
     mutate_(cat = catVar) %>%
-    select(-c(cCats, tCats))
+    select(-c(cCats,tCats))
   if(scaled == TRUE){
-    sppData <- bind_cols(
-      sppData %>%
-        select(ch:bci),
-      sppData %>%
-        select(imp:tCats) %>%
-        mutate_all(scaleCov)
-    )
+    sppData <- scaleCovs(sppData)
   }
   return(sppData)
 }
@@ -119,8 +142,52 @@ fitModels <- function(data, spp, catVar, scaled = FALSE){
   p.sex <- list(formula = ~sex)
   cml <- create.model.list(c("Phi","p"))
   results <- crm.wrapper(cml,data=proc,ddl=ddl,
-                         external=FALSE,accumulate=FALSE)
+                         external=FALSE,accumulate=FALSE,hessian=TRUE)
   return(results)
+}
+
+
+# Function that gives an AICc table, rather than an AIC table
+
+AICc.tab <- function(modelList,spp){
+  LL <- model.table(modelList[[spp]])[,6]*-0.5
+  ss <- data %>% filter(species == spp) %>% nrow
+  K <- model.table(modelList[[spp]])[,2]
+  names <- model.table(modelList[[spp]])[,1]
+  
+  aictab <- aictabCustom(LL,modnames=names,K,nobs=ss)
+  return(aictab)
+}
+
+
+# Function that calculates the weighted betas for a given sp and cov
+
+weightedBeta <- function(modellist, tablelist, spp, cov){
+  betas <- vector('numeric',length=76)
+  for(i in 1:76){
+    betas[i] <- modellist[[spp]][[i]]$results$beta$Phi[cov]
+  }
+  LLs <- vector('numeric',length=76)
+  for(i in 1:76){
+    LLs[i] <- (modellist[[spp]][[i]]$results$neg2lnl)*-0.5
+  }
+  
+  SEs <- vector('numeric',length=76)
+  for(i in 1:76){
+    SEs[i] <- coef(modellist[[spp]][[i]])[paste('Phi.',cov,sep=''),'se']
+  }
+  
+  betadf <- data.frame(beta=betas,LL=LLs,SE=SEs)
+  betadf <- betadf[order(betadf$LL),]
+  
+  table <- tablelist[[spp]]
+  table <- table[order(table$LL),]
+  
+  wtB <- sum(na.omit(table$AICcWt*betadf$beta)[1:length(na.omit(betadf$beta))])
+  wtSE <- sum(na.omit(table$AICcWt*betadf$SE)[1:length(na.omit(betadf$SE))])
+  
+  
+  return(paste(wtB,'+/-',wtSE, sep = ' '))
 }
 
 
@@ -130,67 +197,91 @@ fitModels <- function(data, spp, catVar, scaled = FALSE){
 
 # Fit the models:
 
+#data <- scaleCovs(data)
+
 sppVector <- data$species %>% unique %>% sort
 
 modelListSppCamera <- vector('list', length = length(sppVector))
 modelListSppTransect <- vector('list', length = length(sppVector))
 
+modelList <- vector('list', length = length(sppVector))
+
 names(modelListSppCamera) <- sppVector
 names(modelListSppTransect) <- sppVector
+names(modelList) <- sppVector
+
 
 
 for(i in 1:length(sppVector)){
   modelListSppCamera[[i]] <- fitModels(
-    filter(data, !site %in% removeSites),
+    data = data %>% filter(!site %in% removeSites),
     spp = sppVector[i],
     catVar = 'cCats',
-    scaled = FALSE)
+    scaled = TRUE)
   modelListSppTransect[[i]] <- fitModels(
-    data,
+    data = data,
     spp = sppVector[i],
     catVar = 'tCats',
-    scaled = FALSE)
+    scaled = TRUE)
 }
-
-
-# Function that calculates the weighted betas for a given sp and cov
-
-weightedBeta <- function(modellist, spp, cov){
-  betas <- vector('numeric',length=76)
-  for(i in 1:76){
-    betas[i] <- modellist[[spp]][[i]]$results$beta$Phi[cov]
-  }
-  
-  table <- model.table(modellist[[spp]])
-  table$index <- as.numeric(row.names(table))
-  table <- table[order(table$index),]
-  
-  return(sum(na.omit(table$weight*betas)[1:length(na.omit(betas))]))
-}
-
 
 
 
 # Example output:
 
-modelListSppCamera$GRCA
+modelList$GRCA
 
-modelListSppCamera$GRCA$Phi.21.p.dot
+modelList$GRCA$Phi.21.p.dot
 
-modelListSppCamera$SOSP$Phi.7.p.sex
+modelList$SOSP$Phi.7.p.sex
 
-modelListSppCamera$SOSP$Phi.7.p.sex$results$reals$Phi %>%
+AMROtab <- AICc.tab(modelList,'AMRO')
+CACHtab <- AICc.tab(modelList,'CACH')
+CARWtab <- AICc.tab(modelList,'CARW')
+GRCAtab <- AICc.tab(modelList,'GRCA')
+HOWRtab <- AICc.tab(modelList,'HOWR')
+NOCAtab <- AICc.tab(modelList,'NOCA')
+SOSPtab <- AICc.tab(modelList,'SOSP')
+
+tableList <- list(AMROtab,CACHtab,CARWtab,GRCAtab,HOWRtab,NOCAtab,SOSPtab)
+names(tableList) <- c('AMRO','CACH','CARW','GRCA','HOWR','NOCA','SOSP')
+
+AMROtabT <- AICc.tab(modelListSppTransect,'AMRO')
+CACHtabT <- AICc.tab(modelListSppTransect,'CACH')
+CARWtabT <- AICc.tab(modelListSppTransect,'CARW')
+GRCAtabT <- AICc.tab(modelListSppTransect,'GRCA')
+HOWRtabT <- AICc.tab(modelListSppTransect,'HOWR')
+NOCAtabT <- AICc.tab(modelListSppTransect,'NOCA')
+SOSPtabT <- AICc.tab(modelListSppTransect,'SOSP')
+
+tableListT <- list(AMROtabT,CACHtabT,CARWtabT,GRCAtabT,HOWRtabT,NOCAtabT,SOSPtabT)
+names(tableListT) <- c('AMRO','CACH','CARW','GRCA','HOWR','NOCA','SOSP')
+
+AMROtabC <- AICc.tab(modelListSppCamera,'AMRO')
+CACHtabC <- AICc.tab(modelListSppCamera,'CACH')
+CARWtabC <- AICc.tab(modelListSppCamera,'CARW')
+GRCAtabC <- AICc.tab(modelListSppCamera,'GRCA')
+HOWRtabC <- AICc.tab(modelListSppCamera,'HOWR')
+NOCAtabC <- AICc.tab(modelListSppCamera,'NOCA')
+SOSPtabC <- AICc.tab(modelListSppCamera,'SOSP')
+
+
+tableListC <- list(AMROtab,CACHtab,CARWtab,GRCAtab,HOWRtab,NOCAtab,SOSPtab)
+names(tableListC) <- c('AMRO','CACH','CARW','GRCA','HOWR','NOCA','SOSP')
+
+
+modelList$SOSP$Phi.7.p.sex$results$reals$Phi %>%
   ggplot(aes(x = cat, y = estimate)) +
   geom_point(cex = 3, alpha = .5) +
   theme_bw()
 
-modelListSppCamera$GRCA$Phi.7.p.sex$results$reals$Phi %>%
+modelList$GRCA$Phi.7.p.sex$results$reals$Phi %>%
   ggplot(aes(x = cat, y = estimate)) +
   geom_point(cex = 3, alpha = .5) +
   theme_bw()
 
 
-weightedBeta(modelListSppCamera, 'SOSP', 'cat')
+weightedBeta(modelList, tableList, 'CARW', 'can')
 
 
 

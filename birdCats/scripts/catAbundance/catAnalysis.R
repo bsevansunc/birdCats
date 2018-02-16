@@ -2,42 +2,82 @@
 # --------------------------------- Set-up ----------------------------------------
 # =================================================================================*
 
-# Function searches packages in installed package list,
-# add them if you don't have them, and loads the library:
+# ------------------------*
+# ------ Functions -------
+# ------------------------*
 
-smartLibrary <- function(packageVector){
-  for(i in 1:length(packageVector)){
+# Function searches packages in installed package list, installs them if they are 
+# not present, and loads the library:
+
+smartLibrary <- function(packageVector) {
+  for (i in 1:length(packageVector)) {
     package <- packageVector[i]
-    if(!package %in% rownames(installed.packages())){
-      install.packages(packageVector[i],repos="http://cran.rstudio.com/",
-                       dependencies=TRUE)
+    if (!package %in% rownames(installed.packages())) {
+      install.packages(packageVector[i],
+                       repos = "http://cran.rstudio.com/",
+                       dependencies = TRUE)
     }
   }
   lapply(packageVector, library, character.only = TRUE)
 }
 
+
+# Function that scales variables
+
+scaleVar <- function(var) {
+  (var - mean(var, na.rm = TRUE))/sd(var, na.rm = TRUE)
+}
+
+
+# Function that scales and transposes detection covariates to wide format
+
+transposeCovariate <- function(data, covariate){
+  transMat <- data %>%
+    select(site, visit, cov = covariate) %>%
+    mutate(cov = scaleVar(cov)) %>%
+    spread(visit, cov) %>%
+    select(-site) %>%
+    as.matrix()
+  colnames(transMat) <- NULL
+  return(transMat)
+}
+
+# ------------------------*
+# --- Load libraries -----
+# ------------------------*
+
 smartLibrary(
   c('unmarked', 'dplyr', 'tidyr', 'camtrapR', 'ggplot2', 'AICcmodavg','MuMIn')
-  )
+)
+
+# ------------------------*
+# ---- Load the data -----
+# ------------------------*
+
+options(stringsAsFactors = F)
 
 
-options(stringsAsFactors=F)
-
-# ---------------------------------------------------------------------------------*
-# ---- Get data ----
-# ---------------------------------------------------------------------------------*
+# Site visit data: time and weather
 
 catSiteActivity <- read.csv('data/catDataActivity.csv') %>%
   tbl_df
 
+
+# Camera sampling data
+
 catCam <- read.csv('data/catDataCamera.csv') %>%
   tbl_df %>%
-  filter(!is.na(species)) %>%
-  filter(!is.na(cameraID))
+  filter(!is.na(species), !is.na(cameraID))
+
+
+# Total Neighborhood Nestwatch site list
 
 catSites <- read.csv('data/catSiteData.csv') %>%
   tbl_df %>%
   select(site)
+
+
+# Transect sampling data
 
 catTransect <- read.csv('data/catDataTransect.csv') %>%
   tbl_df %>%
@@ -51,7 +91,13 @@ catTransect <- read.csv('data/catDataTransect.csv') %>%
          visit = as.factor(visit)) %>%
   arrange(site)
 
+
+# Education data by site
+
 eduData <- read.csv('data/eduHS.csv')
+
+
+# Covariate data by site
 
 covs <- read.csv('data/covariateData.csv') %>%
   select(-c(eduHS, eduC)) %>%
@@ -60,8 +106,23 @@ covs <- read.csv('data/covariateData.csv') %>%
   arrange(site)
 
 
+# Camera detection history of cats for each site:
+
+umfCam <- read.csv('data/catCamDetection.csv')
+
+
+# Scaled camera detection covariates
+
+camDetCovs <- read.csv('data/camDetCovs.csv') %>%
+  mutate(
+    tempHigh = scaleVar(tempHigh),
+    tempLow = scaleVar(tempLow),
+    dewLow = scaleVar(dewLow)
+  )
+
+
 # =================================================================================*
-# ---------------------- Set up transect sampling data ----------------------------
+# --------------------------- Set up transect analysis ----------------------------
 # =================================================================================*
 
 # Create an unmarked frame of distance data for the transect counts
@@ -72,367 +133,202 @@ catTransectUmf <- formatDistData(
   transectNameCol="site", 
   dist.breaks=seq(0, 50, by=5),
   occasionCol='visit'
+)
+
+
+# Create a dataframe of potential cat abundance covariates by site
+
+transCovs <- covs %>%
+  select(site) %>%
+  bind_cols(
+    covs %>%
+      select(can:marred) %>%
+      mutate(
+        can2 = can^2,
+        imp2 = imp^2,
+        age2 = age^2,
+        medianIncome = medianIncome^2,
+        hDensity2 = hDensity^2
+      ) %>%
+      mutate_all(scaleVar)
   )
 
-# Get abundance covariates
 
-sitesWithCovs <- left_join(catTransect, covs, by='site') %>%
-  select(-c(visit:dew)) %>%
-  distinct
+# Create a dataframe of potential cat detection covariates by site
 
-
-# Get detection covariates
-
-sitesWithObsCovs <- catTransect %>%
+transDetCovs <- catTransect %>%
   select(-c(species:date)) %>%
-  distinct
+  distinct %>%
+  mutate(time2 = time^2)
 
 
-# Function that transposes covariates to wider format
+# Create a list of wide-form detection covariates
 
-transposeCovariate <- function(data, covariate){
-  sites <- unique(data$site)
-  transMat <- matrix(ncol=6, nrow=length(sites))
-  for(i in 1:length(sites)){
-    dataSub <- data %>% filter(site == sites[i])
-    transMat[i,] <- t(dataSub[covariate])
-    }
-  transDf <- transMat %>% data.frame
-  return(transDf)
-  }
-
-
-# Combining wide detection covariate frames:
-
-transTime <- transposeCovariate(sitesWithObsCovs, 'time')
-transTemp <- transposeCovariate(sitesWithObsCovs, 'temp')
-transDew <- transposeCovariate(sitesWithObsCovs, 'dew')
-
-longCovs <- cbind.data.frame(transTime,transTemp, transDew)
-colnames(longCovs) <- c(rep('time', 6), rep('temp', 6), rep('dew', 6))
-
-longSitesWithObsCovs <- sitesWithObsCovs %>%
-  select(site) %>%
-  unique %>%
-  cbind.data.frame(longCovs)
-
-
-# Split the obsCovs into different matrices
-
-longCovsTime <- longCovs[,1:6] %>%
-  as.matrix
-colnames(longCovsTime) <- NULL
-
-
-longCovsTemp <- longCovs[,7:12] %>%
-  as.matrix
-colnames(longCovsTemp) <- NULL
-
-
-longCovsDew <- longCovs[,13:18] %>%
-  as.matrix
-colnames(longCovsDew) <- NULL
-  
+ySiteCovs <- list(
+  time = transposeCovariate(transDetCovs, 'time'),
+  temp = transposeCovariate(transDetCovs, 'temp'),
+  dew = transposeCovariate(transDetCovs, 'dew'),
+  time2 = transposeCovariate(transDetCovs, 'time2')
+)
 
 
 # Create unmarkedFrameGDS object for gdistsamp
 
 gUmfWithCovs <- unmarkedFrameGDS(
   y =              as.matrix(catTransectUmf),
-  siteCovs =       data.frame(sitesWithCovs),
+  siteCovs =       data.frame(transCovs),
   numPrimary =     6,
-  yearlySiteCovs = list(time=longCovsTime, temp=longCovsTemp, dew=longCovsDew),
+  yearlySiteCovs = ySiteCovs,
   survey =         'line',
   dist.breaks=     seq(0, 50, by=5),
   tlength =        rep(200, nrow(catTransectUmf)),
   unitsIn =        'm'
-  )
-
-# Square and scale variables
-
-gUmfWithCovs@siteCovs <- gUmfWithCovs@siteCovs %>%
-  mutate(
-    can2 = can^2,
-    can = scale(can)[,1],
-    can2 = scale(can2)[,1],
-    imp2 = imp^2,
-    imp = scale(imp)[,1],
-    imp2 = scale(imp2)[,1],
-    medianIncome2 = medianIncome^2,
-    medianIncome = scale(medianIncome)[,1],
-    medianIncome2 = scale(medianIncome2)[,1],
-    hDensity2 = hDensity^2,
-    hDensity = scale(hDensity)[,1],
-    hDensity2 = scale(hDensity2)[,1],
-    age2 = age^2,
-    age = scale(age)[,1],
-    age2 = scale(age2)[,1],
-    eduHS = scale(eduHS)[,1],
-    marred = scale(marred)[,1])
-
-gUmfWithCovs@yearlySiteCovs <- gUmfWithCovs@yearlySiteCovs %>%
-  mutate(
-    time2 = time^2,
-    time = scale(time)[,1],
-    time2 = scale(time2)[,1],
-    temp = scale(temp)[,1],
-    dew = scale(dew)[,1])
+)
 
 
-# ---------------------------------------------------------------------------------*
-# ---- Transect null model fitting ----
-# ---------------------------------------------------------------------------------*
+# =================================================================================*
+# ------------------------- Transect null model fitting ---------------------------
+# =================================================================================*
 
 # Rather than building models with every possible combination of phi and p
 # formulas, we compare null models, find the best one, use that model's phi and
 # p formulas in the abundance models.
 
 
-# Null models
+# Function that builds null abundance models with user-selected
+# detection covariates
 
-null1.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~time,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
+nullModelFit <- function(phi, p) {
+  gdistsamp(
+    lambdaformula = ~1,
+    phiformula = phi,
+    pformula = p,
+    data = gUmfWithCovs,
+    keyfun = 'halfnorm',
+    mixture = 'NB'
   )
-
-null2.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~time,
-  pformula = ~dew*temp,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null3.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~time,
-  pformula = ~temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null4.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~time,
-  pformula = ~time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null5.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~time,
-  pformula = ~temp,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null6.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~1,
-  pformula = ~dew*temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-#This model does not run properly
-null7.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~1,
-  pformula = ~dew*temp,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null8.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~1,
-  pformula = ~temp+time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null9.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~1,
-  pformula = ~time,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-null10.model <-  gdistsamp(
-  lambdaformula = ~1,
-  phiformula = ~1,
-  pformula = ~temp,
-  data = gUmfWithCovs,
-  keyfun = "halfnorm",
-  mixture = "NB"
-  )
-
-nullmodelList <- list(
-  null1.model, null2.model, null3.model, null4.model, null5.model, null6.model,
-  # null7.model,
-  null8.model, null9.model, null10.model
-  )
-
-nulltnames <- c(
-  'null1','null2','null3','null4','null5','null6',
-  # 'null7',
-  'null8','null9','null10'
-  )
+}
 
 
-# Assemble AICc table
+# Formulas for availability
 
-nulltable <- aictab(cand.set=nullmodelList,modnames=nulltnames)
+phiFormulas <- c('~time', '~1')
 
 
-# Examine the null models
+# Formulas for detection
 
-nulltable
+pFormulas <- c(
+  '~dew + temp + time',
+#  '~dew + time', (NaNs produced)
+  '~temp + time',
+  '~dew + temp',
+  '~time',
+#  '~dew', (NaNs produced)
+  '~temp',
+  '~1'
+)
+
+
+# Create empty list for results
+
+outList <- vector('list', length = length(phiFormulas))
+
+
+# Fit the models
+
+for (i in 1:length(phiFormulas)) {
+  phiList <- vector('list', length = length(pFormulas))
+  names(phiList) <- paste(phiFormulas[i], pFormulas)
+  for (j in 1:length(pFormulas)) {
+    phiList[[j]] <- nullModelFit(phiFormulas[i], pFormulas[j])
+  }
+  outList[[i]] <- phiList
+}
+
+modelList <- unlist(outList, recursive = FALSE)
+
+
+# Make an AIC table to compare detection models
+
+aictab(cand.set = modelList, modnames = names(modelList))
+
 
 
 # =================================================================================*
-# ------------------------- Set up camera sampling data ---------------------------
+# ---------------------------- Set up camera analysis -----------------------------
 # =================================================================================*
-
-# Create detection history for each site:
-
-umfCam <- read.csv('data/catCamDetection.csv') %>%
-  data.frame
-
 
 # Single out transect-only sites
 
-removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1',
-                 'GERYERIMD1', 'MISSEDDC1')
-
-# Square and scale variables
-
-camCovs <- covs %>%
-  filter(!site %in% removeSites) %>%
-  data.frame %>%
-  mutate(
-    imp2 = imp^2,
-    imp = scale(imp)[,1],
-    imp2 = scale(imp2)[,1],
-    can2 = can^2,
-    can = scale(can)[,1],
-    can2 = scale(can2)[,1],
-    medianIncome2 = medianIncome^2,
-    medianIncome = scale(medianIncome)[,1],
-    medianIncome2 = scale(medianIncome2)[,1],
-    hDensity2 = hDensity^2,
-    hDensity = scale(hDensity)[,1],
-    hDensity2 = scale(hDensity2)[,1],
-    age2 = age^2,
-    age = scale(age)[,1],
-    age2 = scale(age2)[,1],
-    eduHS = scale(eduHS)[,1],
-    marred = scale(marred)[,1])
+removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1', 'GERYERIMD1', 'MISSEDDC1')
 
 
-# Get scaled detection covariates
+# Remove sites without cameras from covariate data
 
-camDetCovs <- read.csv('data/camDetCovs.csv') %>%
-  filter(!site %in% removeSites) %>%
-  select(site, day, tempHigh, tempLow, dewLow) %>%
-  mutate(
-    tempHigh = scale(tempHigh)[,1],
-    tempLow = scale(tempLow)[,1],
-    dewLow = scale(dewLow)[,1]
-    )
+camCovs <- transCovs %>%
+  filter(!site %in% removeSites)
 
 
 # Create an unmarkedFramePCount object for pcount
 
 camUmfWithCovs <- unmarkedFramePCount(
-  umfCam[,-1],
-  siteCovs=camCovs,
-  obsCovs=camDetCovs)
+  umfCam[, -1],
+  siteCovs = camCovs,
+  obsCovs = camDetCovs
+)
 
 
-# ---------------------------------------------------------------------------------*
-# ---- Cam null model fitting ----
-#----------------------------------------------------------------------------------*
+# =================================================================================*
+# ------------------------- Camera null model fitting -----------------------------
+# =================================================================================*
 
-# Same as transect models, we first compare nulls, then use the best model's phi
-# and p formulas in future abundance models
+# Same as transect models, we first compare nulls, then use the best model's p 
+# formulas in future abundance models
 
-#Null models
 
-null1.cmodel <- pcount(
-  formula = ~dewLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
+# Function to fit null abundance models given user-supplied detection formulas
+
+nullCamModelFit <- function(p) {
+  pcount(
+    formula = as.formula(paste(p, '~1')),
+    data = camUmfWithCovs,
+    mixture = 'NB',
+    K = 50
   )
-
-null2.cmodel <- pcount(
-  formula = ~tempHigh ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-null3.cmodel <- pcount(
-  formula = ~tempLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-null4.cmodel <- pcount(
-  formula = ~tempLow+dewLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-null5.cmodel <- pcount(
-  formula = ~tempHigh+dewLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-null6.cmodel <- pcount(
-  formula = ~tempHigh*dewLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-null7.cmodel <- pcount(
-  formula = ~tempLow*dewLow ~1, 
-  data= camUmfWithCovs,
-  mixture = 'NB',
-  K = 50
-  )
-
-nullclist <- list(null1.cmodel,null2.cmodel,null3.cmodel,
-                  null4.cmodel,null5.cmodel,null6.cmodel,null7.cmodel)
-
-nullcnames <- c('null1','null2','null3','null4','null5','null6','null7')
-
-nullctable <- aictab(nullclist,nullcnames)
+}
 
 
-# Examine the camera null models
+# Detection formulas
 
-nullctable
+pFormulasCam <- c(
+  '~tempHigh',
+  '~tempLow',
+  '~dewLow',
+  '~tempHigh + dewLow',
+  '~tempLow + dewLow',
+  '~tempHigh * dewLow',
+  '~tempLow * dewLow',
+  '~1'
+)
+
+
+# Create an empty vector for results
+
+modelListCam <- vector(mode = 'list', length = length(pFormulasCam))
+names(modelListCam) <- pFormulasCam
+
+
+# Fit the models
+
+for (i in 1:length(pFormulasCam)) {
+  modelListCam[[i]] <- nullCamModelFit(pFormulasCam[i])
+}
+
+
+# Make an AIC table to compare camera detection models
+
+aictab(cand.set = modelListCam, modnames = names(modelListCam))
+
 
 # =================================================================================*
 # ---------------------- Model fitting and AIC table creation ---------------------

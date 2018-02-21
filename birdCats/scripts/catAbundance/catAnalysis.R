@@ -331,77 +331,83 @@ aictab(cand.set = modelListCam, modnames = names(modelListCam))
 
 
 # =================================================================================*
-# ---------------------- Model fitting and AIC table creation ---------------------
+# ---------------------------- Abundance model fitting ----------------------------
 # =================================================================================*
+
+# Function that fits transect models with user-supplied covariates
+
+fit.trans.models <- function(formula) {
+  gdistsamp(
+    lambdaformula = formula,
+    phiformula = ~time,
+    pformula = ~1,
+    data = gUmfWithCovs,
+    keyfun = 'halfnorm',
+    mixture = 'NB'
+  )	
+}
+
+
+# Function that fits camera models with user-supplied covariates
+
+fit.cam.models <- function(formula) {
+  pcount(
+    formula = as.formula(paste('~dewLow', as.character(formula))),
+    data = camUmfWithCovs,
+    mixture = 'NB',
+    K = 50
+  )
+}
 
 
 # List of model formulas
 
-formulalist <- list(
-  ~imp, ~imp+imp2, ~can, ~can+can2, ~hDensity, ~hDensity+hDensity2, ~imp+age,
-  ~imp+marred, ~imp+medianIncome, ~imp+eduHS, ~imp+imp2+age, ~imp+imp2+marred,
-  ~imp+imp2+medianIncome, ~imp+imp2+eduHS, ~can+age, ~can+marred, ~can+medianIncome,
-  ~can+eduHS, ~can+can2+age, ~can+can2+marred, ~can+can2+medianIncome,
-  ~can+can2+eduHS, ~hDensity+age, ~hDensity+marred, ~hDensity+medianIncome,
-  ~hDensity+eduHS, ~hDensity+hDensity2+age, ~hDensity+hDensity2+marred,
-  ~hDensity+hDensity2+medianIncome, ~hDensity+hDensity2+eduHS, ~age, ~marred,
-  ~medianIncome, ~eduHS
-  )
-
-names(formulalist) <- as.character(formulalist)
+formulaList <- c(
+  ~imp,
+  ~imp+imp2, 
+  ~imp+marred,
+  ~imp+medianIncome,
+  ~imp+imp2+marred,
+  ~imp+imp2+medianIncome, 
+  ~marred,
+  ~medianIncome
+)
 
 
-# Function that fits transect models with the formulas in the list above
+# Create an empty list to store the transect models
 
-fit.trans.models <- function(covlist){
-  modelist <- vector('list',length=length(covlist))
-  nameslist <- names(formulalist)
-  for(i in 1:length(covlist)){
-    modelist[[i]] <- gdistsamp(
-      lambdaformula = covlist[[i]],
-      phiformula = ~time,
-      pformula = ~temp,
-      data = gUmfWithCovs,
-      keyfun = 'halfnorm',
-      mixture = 'NB'
-      )
-  }
-  names(modelist) <- nameslist
-  return(modelist)
+tModels <- vector('list', length = length(formulaList))
+names(tModels) <- as.character(formulaList)
+
+
+# Fit the transect models
+
+for (i in 1:length(formulaList)) {
+  tModels[[i]] <- fit.trans.models(formulaList[i])
 }
 
 
-# Function that fits camera models with the formulas in the list above
+# Create an AIC table
 
-fit.cam.models <- function(covlist){
-  modelist <- vector('list',length = length(covlist))
-  nameslist <- as.character(covlist)
-  for(i in 1:length(covlist)){
-    modelist[[i]] <- pcount(
-      formula = as.formula(
-        paste('~dewLow', nameslist[[i]])),
-      data = camUmfWithCovs,
-      mixture = 'NB',
-      K = 50
-      )
-  }
-  names(modelist) <- nameslist
-  return(modelist)
+tAICTab <- aictab(cand.set = tModels, modnames=names(tModels))
+
+
+# Create an empty list to store the camera models
+
+cModels <- vector('list', length = length(formulaList))
+names(cModels) <- as.character(formulaList)
+
+
+# Fit the camera models
+
+for (i in 1:length(formulaList)) {
+  cModels[[i]] <- fit.cam.models(formulaList[i])
 }
 
 
-# Fit the transect models and create an AICc table
+# Create an AIC table
 
-transmodels <- fit.trans.models(covlist=formulalist)
-
-transAICTab <- aictab(transmodels, modnames=names(transmodels))
-
-
-# Fit the camera models and create an AICc table
-
-cammodels <- fit.cam.models(covlist=formulalist)
-
-camAICTab <- aictab(cammodels, modnames=names(cammodels))
+cAICTab <- aictab(cand.set = cModels, modnames=names(cModels))
 
 
 
@@ -432,8 +438,8 @@ for(i in 1:length(tAbunds)){
   tV2[[i]] <- tAbunds[[i]]$SE * tWeight[i]
 }
 
-tAbundsWt <- data.frame(matrix(nrow=53,ncol=34))
-tSEWt <- data.frame(matrix(nrow=53,ncol=34))
+tAbundsWt <- data.frame(matrix(nrow=nrow(covs), ncol=length(tAbunds)))
+tSEWt <- data.frame(matrix(nrow=nrow(covs), ncol=length(tAbunds)))
 for(i in 1:length(tV1)){
   tAbundsWt[,i] <- tV1[[i]]
 }
@@ -496,8 +502,8 @@ for(i in 1:length(cAbunds)){
   cV2[[i]] <- cAbunds[[i]]$SE * cWeight[i]
 }
 
-cAbundsWt <- data.frame(matrix(nrow=48,ncol=34))
-cSEWt <- data.frame(matrix(nrow=48,ncol=34))
+cAbundsWt <- data.frame(matrix(nrow=nrow(camCovs), ncol=length(cAbunds)))
+cSEWt <- data.frame(matrix(nrow=nrow(camCovs), ncol=length(cAbunds)))
 for(i in 1:length(cV1)){
   cAbundsWt[,i] <- cV1[[i]]
 }
@@ -512,10 +518,8 @@ cAbundsWt <- cAbundsWt %>%
 cSEWt <- cSEWt %>%
   transmute(SE = rowSums(cSEWt))
 
-cSites <- catTransect %>%
-  select(site) %>%
-  filter(!site %in% removeSites) %>%
-  distinct
+cSites <- camCovs %>%
+  select(site)
 
 cAbundsWt <- bind_cols(cSites,cAbundsWt,cSEWt)
 cAbundsWt[,2:3] <- cAbundsWt[,2:3]/2

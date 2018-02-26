@@ -370,7 +370,8 @@ formulaList <- c(
   ~imp+imp2+marred,
   ~imp+imp2+medianIncome, 
   ~marred,
-  ~medianIncome
+  ~medianIncome,
+  ~1
 )
 
 
@@ -412,128 +413,74 @@ cAICTab <- aictab(cand.set = cModels, modnames=names(cModels))
 
 
 # ---------------------------------------------------------------------------------*
-# ---- Format transect model results ----
+# ---- Format model results ----
 # ---------------------------------------------------------------------------------*
 
-# Find predicted betas for transect models
+# Function to weight predicted abundance at each site by model AICc weights
 
-tAbunds <- vector('list',length=length(transmodels))
-
-for(i in 1:length(tAbunds)){
-  tAbunds[[i]] <- predict(transmodels[[i]], type='lambda', appenddata=TRUE)
+weightPredictions <- function(modResults, AICTab, method) {
+  
+  # Return error for wrong 'method' input
+  if (!method %in% c('transect', 'camera')) {
+    return("method must be either 'transect' or 'camera'")
+  }
+  
+  # Get appropriate site list depending on detection method
+  if (method == 'transect'){
+    sites <- covs %>% select(site)
+  } else {
+    sites <- camCovs %>% select(site)
+  }
+  
+  # Resort AIC table results to match order of modResults
+  unsortAICWt <- AICTab[match(names(modResults), AICTab$Modnames),]$AICcWt
+  
+  # Make empty list to store weighted model predictions
+  weighted <- vector('list', length = length(modResults))
+  names(weighted) <- names(modResults)
+  
+  # Multiply model predictions by their AICc weights
+  for (i in 1:length(modResults)) {
+    weighted[[i]] <- modResults[[i]] * unsortAICWt[i]
+  }
+  
+  # Add up weighted predictions
+  for (i in 1:ncol(weighted[[1]])) {
+    for (j in 2:length(weighted)) {
+      weighted[[1]][i] <- weighted[[1]][i] + weighted[[j]][i]
+    }
+  }
+  
+  # Set up output dataframe
+  output <- bind_cols(sites, weighted[[1]])
+  colnames(output) <- c('site', 'abund', 'SE', 'lower', 'upper')
+  
+  # Add covariates to output dataframe
+  output <- left_join(output, covs, by = 'site')
+  
+  return(output)
 }
 
 
-# Weight model betas  and SEs by their AIC weights (transect models)
+# Find predicted abundances for transect models
 
-unsortTransTab <- transAICTab[match(names(transmodels), transAICTab$Modnames),]
-tWeight <- unsortTransTab$AICcWt
+tAbundsUnweighted <- lapply(tModels, predict, type = 'lambda', appenddata = TRUE)
 
-tV1 <- vector('list',length=length(tAbunds))
-tV2 <- vector('list',length=length(tAbunds))
+cAbundsUnweighted <- lapply(cModels, predict, type = 'state')
 
 
-for(i in 1:length(tAbunds)){
-  tV1[[i]] <- tAbunds[[i]]$Predicted * tWeight[i]
-  tV2[[i]] <- tAbunds[[i]]$SE * tWeight[i]
-}
 
-tAbundsWt <- data.frame(matrix(nrow=nrow(covs), ncol=length(tAbunds)))
-tSEWt <- data.frame(matrix(nrow=nrow(covs), ncol=length(tAbunds)))
-for(i in 1:length(tV1)){
-  tAbundsWt[,i] <- tV1[[i]]
-}
+# Weight predicted abundance by AIcC weights
 
-for(i in 1:length(tV2)){
-  tSEWt[,i] <- tV2[[i]]
-}
+tAbundsWt <- weightPredictions(tAbundsUnweighted, tAICTab, 'transect')
 
-tAbundsWt <- tAbundsWt %>%
-  transmute(abund = rowSums(tAbundsWt))
+cAbundsWt <- weightPredictions(cAbundsUnweighted, cAICTab, 'camera')
 
-tSEWt <- tSEWt %>%
-  transmute(SE = rowSums(tSEWt))
-
-tSites <- catTransect %>%
-  select(site) %>%
-  distinct
-
-tAbundsWt <- bind_cols(tSites,tAbundsWt,tSEWt)
-tAbundsWt[,2:3] <- tAbundsWt[,2:3]/2
-colnames(tAbundsWt) <- c('site','abunds','SE')
-
-tAbundsWt <- left_join(tAbundsWt,covs,by='site')
-
-
-# Examine model-averaged abundance, SE estimates (transect)
-
-tAbundsWt
 
 
 # Write to a file
 
 write.csv(tAbundsWt, 'data/abundanceTrans.csv', row.names = FALSE)
-
-
-# ---------------------------------------------------------------------------------*
-# ---- Format camera model results ----
-# ---------------------------------------------------------------------------------*
-
-# Find model betas for camera models
-
-cAbunds <- vector('list',length=length(cammodels))
-
-for(i in 1:length(cammodels)){
-  cAbunds[[i]] <- predict(cammodels[[i]],type='state')
-}
-
-
-# Weight model betas and SEs by their AIC weights, camera models
-
-unsortCamTab <- camAICTab[match(names(cammodels), camAICTab$Modnames),]
-cWeight <- unsortCamTab$AICcWt
-
-cV1 <- vector('list',length=length(cAbunds))
-cV2 <- vector('list',length=length(cAbunds))
-
-
-for(i in 1:length(cAbunds)){
-  cV1[[i]] <- cAbunds[[i]]$Predicted * cWeight[i]
-  cV2[[i]] <- cAbunds[[i]]$SE * cWeight[i]
-}
-
-cAbundsWt <- data.frame(matrix(nrow=nrow(camCovs), ncol=length(cAbunds)))
-cSEWt <- data.frame(matrix(nrow=nrow(camCovs), ncol=length(cAbunds)))
-for(i in 1:length(cV1)){
-  cAbundsWt[,i] <- cV1[[i]]
-}
-
-for(i in 1:length(cV2)){
-  cSEWt[,i] <- cV2[[i]]
-}
-
-cAbundsWt <- cAbundsWt %>%
-  transmute(abund = rowSums(cAbundsWt))
-
-cSEWt <- cSEWt %>%
-  transmute(SE = rowSums(cSEWt))
-
-cSites <- camCovs %>%
-  select(site)
-
-cAbundsWt <- bind_cols(cSites,cAbundsWt,cSEWt)
-cAbundsWt[,2:3] <- cAbundsWt[,2:3]/2
-colnames(cAbundsWt) <- c('site','abunds','SE')
-
-cAbundsWt <- left_join(cAbundsWt,covs,by='site')
-
-
-# Examine model-averaged abundance, SE estimates (camera)
-
-cAbundsWt
-
-
-# Write to a file
 
 write.csv(cAbundsWt, 'data/abundanceCam.csv', row.names = FALSE)
 

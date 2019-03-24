@@ -109,7 +109,7 @@ covs <- read.csv('data/covariateData.csv') %>%
 
 # Camera detection history of cats for each site:
 
-umfCam <- read.csv('data/umfCamMonthly.csv')
+umfCam <- read.csv('data/catCamDetection.csv')
 
 
 # Scaled camera detection covariates
@@ -511,7 +511,7 @@ p.formulas.trans <- c(
   '~1',
   '~doy',
   '~time',
-  'time+time2',
+  '~time+time2',
   '~temp',
   '~dew'
 )

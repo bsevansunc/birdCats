@@ -511,7 +511,6 @@ p.formulas.trans <- c(
   '~1',
   '~doy',
   '~time',
-  '~time+time2',
   '~temp',
   '~dew'
 )
@@ -698,11 +697,11 @@ unweightAbund.dem.trans <- lapply(
 )
 
 unweightAbund.imp.cam <- lapply(
-  modelList.imp.cam, predict, type = 'lambda', appenddata = TRUE
+  modelList.imp.cam, predict, type = 'state', appenddata = TRUE
 )
 
 unweightAbund.dem.cam <- lapply(
-  modelList.dem.cam, predict, type = 'lambda', appenddata = TRUE
+  modelList.dem.cam, predict, type = 'state', appenddata = TRUE
 )
 
 
@@ -710,19 +709,19 @@ unweightAbund.dem.cam <- lapply(
 # Weight predicted abundance by AIcC weights
 
 weightAbund.imp.trans <- weightPredictions(
-  unweightAbund.imp.trans, AICTab.imp.trans, 'transect'
+  unweightAbund.imp.trans, AICtab.imp.trans, 'transect'
 )
 
 weightAbund.dem.trans <- weightPredictions(
-  unweightAbund.dem.trans, AICTab.dem.trans, 'transect'
+  unweightAbund.dem.trans, AICtab.dem.trans, 'transect'
 )
 
 weightAbund.imp.cam <- weightPredictions(
-  unweightAbund.imp.cam, AICTab.imp.cam, 'camera'
+  unweightAbund.imp.cam, AICtab.imp.cam, 'camera'
 )
 
 weightAbund.dem.cam <- weightPredictions(
-  unweightAbund.dem.cam, AICTab.dem.cam, 'camera'
+  unweightAbund.dem.cam, AICtab.dem.cam, 'camera'
 )
 
 

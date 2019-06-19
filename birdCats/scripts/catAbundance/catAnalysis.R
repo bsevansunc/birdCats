@@ -1,157 +1,23 @@
-# =================================================================================*
-# --------------------------------- Set-up ----------------------------------------
-# =================================================================================*
-
-# ------------------------*
-# ------ Functions -------
-# ------------------------*
-
-# Function searches packages in installed package list, installs them if they are 
-# not present, and loads the library:
-
-smartLibrary <- function(packageVector) {
-  for (i in 1:length(packageVector)) {
-    package <- packageVector[i]
-    if (!package %in% rownames(installed.packages())) {
-      install.packages(packageVector[i],
-                       repos = "http://cran.rstudio.com/",
-                       dependencies = TRUE)
-    }
-  }
-  lapply(packageVector, library, character.only = TRUE)
-}
+source('scripts/catAbundance/setup.R')
 
 
-# Function that scales variables
+# prepare data for transect analysis --------------------------------------
 
-scaleVar <- function(var) {
-  (var - mean(var, na.rm = TRUE))/sd(var, na.rm = TRUE)
-}
+# Create an unmarked frame of distance data for the transect counts:
 
-
-# Function that scales and transposes detection covariates to wide format
-
-transposeCovariate <- function(data, covariate){
-  transMat <- data %>%
-    select(site, visit, cov = covariate) %>%
-    mutate(cov = scaleVar(cov)) %>%
-    spread(visit, cov) %>%
-    select(-site) %>%
-    as.matrix()
-  colnames(transMat) <- NULL
-  return(transMat)
-}
-
-# ------------------------*
-# --- Load libraries -----
-# ------------------------*
-
-smartLibrary(
-  c('unmarked', 'dplyr', 'tidyr', 'ggplot2', 'AICcmodavg','MuMIn')
-)
-
-# ------------------------*
-# ---- Load the data -----
-# ------------------------*
-
-options(stringsAsFactors = F)
-
-
-# Site visit data: time and weather
-
-catSiteActivity <- read.csv('data/catDataActivity.csv') %>%
-  tbl_df
-
-
-# Camera sampling data
-
-catCam <- read.csv('data/catDataCamera.csv') %>%
-  tbl_df %>%
-  filter(!is.na(species), !is.na(cameraID))
-
-
-# Total Neighborhood Nestwatch site list
-
-catSites <- read.csv('data/catSiteData.csv') %>%
-  tbl_df %>%
-  select(site)
-
-
-# Transect sampling data
-
-catTransect <- read.csv('data/catDataTransect.csv') %>%
-  tbl_df %>%
-  filter(!is.na(count)) %>%
-  filter(species == 'cat') %>%
-  left_join(catSiteActivity %>%
-              filter(activity == 'transect'),
-            by = c('site', 'visit')
-            ) %>%
-  mutate(distance = as.numeric(distance),
-         visit = as.factor(visit),
-         doy = as.numeric(strftime(date, format = '%j'))) %>%
-  arrange(site)
-
-
-# Education data by site
-
-eduData <- read.csv('data/eduHS.csv')
-
-
-# Covariate data by site
-
-covs <- read.csv('data/covariateData.csv') %>%
-  select(-c(eduHS, eduC)) %>%
-  left_join(eduData) %>%
-  tbl_df %>%
-  arrange(site)
-
-
-# Camera detection history of cats for each site:
-
-umfCam <- read.csv('data/catCamDetection.csv')
-
-
-# Scaled camera detection covariates
-
-camDetCovs <- read.csv('data/camDetCovs.csv') %>%
-  mutate(
-    tempHigh = scaleVar(tempHigh),
-    tempLow = scaleVar(tempLow),
-    dewLow = scaleVar(dewLow),
-    dewHigh = scaleVar(dewHigh),
-    doy = scaleVar(as.numeric(strftime(date, format = '%j')))
+catTransectUmf <- 
+  formatDistData(
+    data.frame(catTransect), 
+    distCol="distance",
+    transectNameCol="site", 
+    dist.breaks=seq(0, 50, by=5),
+    occasionCol='visit'
   )
 
-# camDetCovs3 <- data.frame(
-#   site = sort(rep(unique(camDetCovs$site), 3)),
-#   tempHigh = scaleVar(colMeans(matrix(camDetCovs$tempHigh, nrow = 7))),
-#   tempLow = scaleVar(colMeans(matrix(camDetCovs$tempLow, nrow = 7))),
-#   dewHigh = scaleVar(colMeans(matrix(camDetCovs$dewHigh, nrow = 7))),
-#   dewLow = scaleVar(colMeans(matrix(camDetCovs$dewLow, nrow = 7))),
-#   doy = scaleVar(
-#     colMeans(matrix(as.numeric(strftime(camDetCovs$date, format = '%j')), nrow = 7))
-#     )
-#   )
+# Create a dataframe of potential cat abundance covariates by site:
 
-# =================================================================================*
-# --------------------------- Set up transect analysis ----------------------------
-# =================================================================================*
-
-# Create an unmarked frame of distance data for the transect counts
-
-catTransectUmf <- formatDistData(
-  data.frame(catTransect), 
-  distCol="distance",
-  transectNameCol="site", 
-  dist.breaks=seq(0, 50, by=5),
-  occasionCol='visit'
-)
-
-
-# Create a dataframe of potential cat abundance covariates by site
-
-transCovs <- covs %>%
+transCovs <- 
+  covs %>%
   select(site) %>%
   bind_cols(
     covs %>%
@@ -167,570 +33,504 @@ transCovs <- covs %>%
       mutate_all(scaleVar)
   )
 
+# Create a dataframe of potential cat detection covariates by site:
 
-# Create a dataframe of potential cat detection covariates by site
-
-transDetCovs <- catTransect %>%
+transDetCovs <- 
+  catTransect %>%
   select(-c(species:date)) %>%
   distinct %>%
   mutate(time2 = time^2)
 
+# Create a list of wide-form detection covariates:
 
-# Create a list of wide-form detection covariates
-
-ySiteCovs <- list(
-  time = transposeCovariate(transDetCovs, 'time'),
-  temp = transposeCovariate(transDetCovs, 'temp'),
-  dew = transposeCovariate(transDetCovs, 'dew'),
-  time2 = transposeCovariate(transDetCovs, 'time2'),
-  doy = transposeCovariate(transDetCovs, 'doy')
-)
+ySiteCovs <-
+  list(
+    time = transposeCovariate(transDetCovs, 'time'),
+    temp = transposeCovariate(transDetCovs, 'temp'),
+    dew = transposeCovariate(transDetCovs, 'dew'),
+    time2 = transposeCovariate(transDetCovs, 'time2'),
+    doy = transposeCovariate(transDetCovs, 'doy')
+  )
 
 
 # Create unmarkedFrameGDS object for gdistsamp
 
-gUmfWithCovs <- unmarkedFrameGDS(
-  y =              as.matrix(catTransectUmf),
-  siteCovs =       data.frame(transCovs),
-  numPrimary =     6,
-  yearlySiteCovs = ySiteCovs,
-  survey =         'line',
-  dist.breaks=     seq(0, 50, by=5),
-  tlength =        rep(200, nrow(catTransectUmf)),
-  unitsIn =        'm'
-)
+gUmfWithCovs <-
+  unmarkedFrameGDS(
+    y = as.matrix(catTransectUmf),
+    siteCovs = data.frame(transCovs),
+    numPrimary = 6,
+    yearlySiteCovs = ySiteCovs,
+    survey = 'line',
+    dist.breaks =  seq(0, 50, by = 5),
+    tlength = rep(200, nrow(catTransectUmf)),
+    unitsIn = 'm'
+  )
 
+# prepare data for camera analysis --------------------------------------
 
+# Single out transect-only sites:
 
-# =================================================================================*
-# ---------------------------- Set up camera analysis -----------------------------
-# =================================================================================*
-
-# Single out transect-only sites
-
-removeSites <- c('OLONMARDC1','WOLFKARDC1', 'WOLFAMYDC1', 'GERYERIMD1', 'MISSEDDC1')
-
+removeSites <-
+  c('OLONMARDC1',
+    'WOLFKARDC1',
+    'WOLFAMYDC1',
+    'GERYERIMD1',
+    'MISSEDDC1')
 
 # Remove sites without cameras from covariate data
 
-camCovs <- transCovs %>%
+camCovs <- 
+  transCovs %>%
   filter(!site %in% removeSites)
 
 
 # Create an unmarkedFramePCount object for pcount
 
-camUmfWithCovs <- unmarkedFramePCount(
-  umfCam[, -1],
-  siteCovs = camCovs,
-  obsCovs = camDetCovs
-)
-
-
-
-
-# =================================================================================*
-# ------------------------- Transect null model fitting ---------------------------
-# =================================================================================*
-
-# Rather than building models with every possible combination of phi and p
-# formulas, we compare null models, find the best one, use that model's phi and
-# p formulas in the abundance models.
-
-
-# Function that builds null abundance models with user-selected
-# detection covariates
-
-# nullModelFit <- function(phi, p) {
-#   gdistsamp(
-#     lambdaformula = ~1,
-#     phiformula = phi,
-#     pformula = p,
-#     data = gUmfWithCovs,
-#     keyfun = 'halfnorm',
-#     mixture = 'NB',
-#     K = 50
-#   )
-# }
-# 
-# 
-# # Formulas for availability
-# 
-# phiFormulas <- c('~time', '~1')
-# 
-# 
-# # Formulas for detection
-# 
-# pFormulas <- c(
-#   '~doy + temp',
-#   '~doy + time',
-#   '~doy + dew',
-#   '~doy + + time + time2',
-#   '~dew + time',
-#   '~dew + temp',
-#   '~dew + time + time2',
-#   '~time + temp',
-#   '~time + time2 + temp',
-#   '~doy',
-#   '~time',
-#   '~time + time2',
-#   '~dew', # This term is the one that produces NaNs
-#   '~temp',
-#   '~1'
-# )
-# 
-# 
-# # Create empty list for results
-# 
-# outList <- vector('list', length = length(phiFormulas))
-# 
-# 
-# # Fit the models
-# 
-# for (i in 1:length(phiFormulas)) {
-#   phiList <- vector('list', length = length(pFormulas))
-#   names(phiList) <- paste(phiFormulas[i], pFormulas)
-#   for (j in 1:length(pFormulas)) {
-#     phiList[[j]] <- nullModelFit(phiFormulas[i], pFormulas[j])
-#   }
-#   outList[[i]] <- phiList
-# }
-# 
-# modelList <- unlist(outList, recursive = FALSE)
-# 
-# 
-# # Make an AIC table to compare detection models
-# 
-# aictab(cand.set = modelList, modnames = names(modelList))
-
-
-
-# =================================================================================*
-# ------------------------- Camera null model fitting -----------------------------
-# =================================================================================*
-
-# # Same as transect models, we first compare nulls, then use the best model's p 
-# # formulas in future abundance models
-# 
-# 
-# # Function to fit null abundance models given user-supplied detection formulas
-# 
-# nullCamModelFit <- function(p) {
-#   pcount(
-#     formula = as.formula(paste(p, '~1')),
-#     data = camUmfWithCovs,
-#     mixture = 'NB',
-#     K = 50
-#   )
-# }
-# 
-# 
-# # Detection formulas
-# 
-# pFormulasCam <- c(
-#   '~doy',
-#   '~tempHigh',
-#   '~tempLow',
-#   '~dewHigh',
-#   '~doy + tempHigh',
-#   '~doy + tempLow',
-#   '~doy + dewHigh',
-#   '~tempHigh + dewHigh',
-#   '~tempLow + dewHigh',
-#   '~1'
-# )
-# 
-# 
-# # Create an empty vector for results
-# 
-# modelListCam <- vector(mode = 'list', length = length(pFormulasCam))
-# names(modelListCam) <- pFormulasCam
-# 
-# 
-# # Fit the models
-# 
-# for (i in 1:length(pFormulasCam)) {
-#   modelListCam[[i]] <- nullCamModelFit(pFormulasCam[i])
-# }
-# 
-# 
-# # Make an AIC table to compare camera detection models
-# 
-# aictab(cand.set = modelListCam, modnames = names(modelListCam))
-
-
-# =================================================================================*
-# ---------------------------- Abundance model fitting ----------------------------
-# =================================================================================*
-
-# # Function that fits transect models with user-supplied covariates
-# 
-# fit.trans.models <- function(formula) {
-#   gdistsamp(
-#     lambdaformula = formula,
-#     phiformula = ~time,
-#     pformula = ~1,
-#     data = gUmfWithCovs,
-#     output = 'density',
-#     unitsOut = 'ha',
-#     keyfun = 'halfnorm',
-#     mixture = 'NB'
-#   )	
-# }
-# 
-# 
-# # Function that fits camera models with user-supplied covariates
-# 
-# fit.cam.models <- function(formula) {
-#   pcount(
-#     formula = as.formula(paste('~dewHigh', as.character(formula))),
-#     data = camUmfWithCovs,
-#     mixture = 'NB',
-#     K = 50
-#   )
-# }
-# 
-# 
-# # List of model formulas
-# 
-# formulaList <- c(
-#   ~imp,
-#   ~imp + imp2,
-#   ~1
-# )
-# 
-# 
-# # Create an empty list to store the transect models
-# 
-# tModels <- vector('list', length = length(formulaList))
-# names(tModels) <- as.character(formulaList)
-# 
-# 
-# # Fit the transect models
-# 
-# for (i in 1:length(formulaList)) {
-#   tModels[[i]] <- fit.trans.models(formulaList[i])
-# }
-# 
-# 
-# # Create an AIC table
-# 
-# tAICTab <- aictab(cand.set = tModels, modnames=names(tModels))
-# 
-# 
-# # Create an empty list to store the camera models
-# 
-# cModels <- vector('list', length = length(formulaList))
-# names(cModels) <- as.character(formulaList)
-# 
-# 
-# # Fit the camera models
-# 
-# for (i in 1:length(formulaList)) {
-#   cModels[[i]] <- fit.cam.models(formulaList[i])
-# }
-# 
-# 
-# # Create an AIC table
-# 
-# cAICTab <- aictab(cand.set = cModels, modnames=names(cModels))
-
-
-
-# --------------------------------------------------------------------------------*
-# --------- Combine models for detection and abundance -----------
-# --------------------------------------------------------------------------------*
-
-fit.all.trans.models <- function(lformula, phformula, pformula) {
-  gdistsamp(
-    lambdaformula = lformula,
-    phiformula = phformula,
-    pformula = pformula,
-    data = gUmfWithCovs,
-    output = 'density',
-    unitsOut = 'ha',
-    keyfun = 'halfnorm',
-    mixture = 'NB'
-  )	
-}
-
-fit.all.cam.models <- function(p.formula, l.formula) {
-  pcount(
-    formula = as.formula(paste(p.formula, l.formula)),
-    data = camUmfWithCovs,
-    mixture = 'NB',
-    K = 50
+camUmfWithCovs <- 
+  unmarkedFramePCount(
+    umfCam[, -1],
+    siteCovs = camCovs,
+    obsCovs = camDetCovs
   )
-}
 
+# transect null model fitting ---------------------------------------------
 
-# Model parameters for both transects and cameras
+# Rather than building models with every possible combination of phi and p formulas,
+# we compare null models, find the best one, use that model's phi and p formulas in 
+# the abundance models.
 
-l.formulas.imp <- c(
-  '~1',
-  '~imp',
-  '~imp+imp2'
-)
+# Function that builds null abundance models with user-selected detection covariates
 
-l.formulas.dem <- c(
-  '~1',
-  '~hDensity',
-  '~hDensity+hDensity2',
-  '~medianIncome',
-  '~medianIncome+medianIncome2',
-  '~eduHS',
-  '~eduHS+eduHS2',
-  '~medianIncome+eduHS',
-  '~hDensity+medianIncome',
-  '~hDensity+eduHS',
-  '~hDensity+medianIncome+eduHS',
-  '~hDensity+hDensity2+medianIncome',
-  '~hDensity+hDensity2+eduHS',
-  '~hDensity+hDensity2+medianIncome+eduHS',
-  '~medianIncome+medianIncome2+hDensity',
-  '~medianIncome+medianIncome2+eduHS',
-  '~medianIncome+medianIncome2+hDensity+eduHS',
-  '~eduHS+eduHS2+hDensity',
-  '~eduHS+eduHS2+medianIncome',
-  '~eduHS+eduHS2+hDensity+medianIncome',
-  '~hDensity+hDensity2+medianIncome+medianIncome2',
-  '~hDensity+hDensity2+medianIncome+medianIncome2+eduHS',
-  '~hDensity+hDensity2+eduHS+eduHS2',
-  '~hDensity+hDensity2+eduHS+eduHS2+medianIncome',
-  '~medianIncome+medianIncome2+eduHS+eduHS2',
-  '~medianIncome+medianIncome2+eduHS+eduHS2+hDensity',
-  '~medianIncome+medianIncome2+eduHS+eduHS2+hDensity+hDensity2'
-)
-
-ph.formulas <- c(
-  '~1',
-  '~time',
-  '~time+time2'
-)
-
-p.formulas.trans <- c(
-  '~1',
-  '~doy',
-  '~time',
-  '~temp',
-  '~dew'
-)
-
-p.formulas.cam <- c(
-  '~1',
-  '~doy',
-  '~tempHigh',
-  '~tempLow',
-  '~dewHigh'
-)
-
-
-# Fit the models for transects/impervious
-
-outList.imp.trans <- vector('list', length = length(ph.formulas))
-
-for (i in 1:length(ph.formulas)) {
-  phiList <- vector('list', length = length(p.formulas.trans))
-  for (j in 1:length(p.formulas.trans)) {
-    pList <- vector('list', length = length(l.formulas.imp))
-    names(pList) <- paste(ph.formulas[i],p.formulas.trans[j],l.formulas.imp)
-    for (k in 1:length(l.formulas.imp)) {
-      pList[[k]] <- fit.all.trans.models(
-        l.formulas.imp[k],ph.formulas[i], p.formulas.trans[j]
-        )
-    }
-    phiList[[j]] <- pList
+fit.trans.null.models <-
+  function(phi, p) {
+    gdistsamp(
+      lambdaformula = ~ 1,
+      phiformula = phi,
+      pformula = p,
+      data = gUmfWithCovs,
+      keyfun = 'halfnorm',
+      mixture = 'NB',
+      K = 50
+    )
   }
-  outList.imp.trans[[i]] <- phiList
-}
 
-modelList.imp.trans <- unlist(
-  unlist(outList.imp.trans, recursive = FALSE), recursive = FALSE
+# Formulas for availability:
+
+phiFormulas <-
+  c('~time', '~time + time2', '~1')
+
+# Formulas for detection:
+
+pFormulas <-
+  c(
+    '~doy + temp',
+    '~doy + time',
+    '~doy + dew',
+    '~doy + time + time2',
+    '~dew + time',
+    '~dew + temp',
+    '~dew + time + time2',
+    '~time + temp',
+    '~time + time2 + temp',
+    '~doy',
+    '~time',
+    '~time + time2',
+    '~dew',
+    '~temp',
+    '~1'
   )
 
 
+# Create empty list for results:
+
+outList <- 
+  vector(
+    'list',
+    length = length(phiFormulas))
 
 
+# Fit the models
 
-# Fit the models for transects/demographics
-
-outList.dem.trans <- vector('list', length = length(ph.formulas))
-
-for (i in 1:length(ph.formulas)) {
-  phiList <- vector('list', length = length(p.formulas.trans))
-  for (j in 1:length(p.formulas.trans)) {
-    pList <- vector('list', length = length(l.formulas.dem))
-    names(pList) <- paste(ph.formulas[i],p.formulas.trans[j],l.formulas.dem)
-    for (k in 1:length(l.formulas.dem)) {
-      pList[[k]] <- fit.all.trans.models(
-        l.formulas.dem[k],ph.formulas[i], p.formulas.trans[j]
-        )
-    }
-    phiList[[j]] <- pList
+for (i in 1:length(phiFormulas)) {
+  phiList <-
+    vector('list', length = length(pFormulas))
+  names(phiList) <-
+    paste(phiFormulas[i], pFormulas)
+  for (j in 1:length(pFormulas)) {
+    phiList[[j]] <-
+      fit.trans.null.models(phiFormulas[i], pFormulas[j])
   }
-  outList.dem.trans[[i]] <- phiList
+  outList[[i]] <- phiList
 }
 
-modelList.dem.trans <- unlist(
-  unlist(outList.dem.trans, recursive = FALSE), recursive = FALSE
+tModels <- 
+  unlist(
+    outList, 
+    recursive = FALSE)
+
+
+# Make an AIC table to compare detection models
+
+aictab(
+  cand.set = tModels,
+  modnames = names(tModels))
+
+# camera null model fitting ---------------------------------------------
+
+# Same as transect models, we first compare nulls, then use the best model's 
+# p formulas in future abundance models
+
+# Function to fit null abundance models given user-supplied detection formulas:
+
+fit.cam.null.models <- 
+  function(p) {
+    pcount(
+      formula = as.formula(paste(p, '~1')),
+      data = camUmfWithCovs,
+      mixture = 'NB',
+      K = 50
+    )
+  }
+
+
+# Detection formulas:
+
+pFormulasCam <-
+  c(
+    '~doy',
+    '~tempHigh',
+    '~tempLow',
+    '~dewHigh',
+    '~doy + tempHigh',
+    '~doy + tempLow',
+    '~doy + dewHigh',
+    '~tempHigh + dewHigh',
+    '~tempLow + dewHigh',
+    '~1'
   )
 
+# Create an empty vector for results:
+
+cModels <- 
+  vector(
+    mode = 'list',
+    length = length(pFormulasCam)) %>%
+  setNames(pFormulasCam)
 
 
+# Fit the models:
 
-
-# Fit the models for cameras/impervious
-
-outList.imp.cam <- vector('list', length = length(p.formulas.cam))
-
-for (i in 1:length(p.formulas.cam)) {
-  p.list <- vector('list', length = length(l.formulas.imp))
-  names(p.list) <- paste(p.formulas.cam[i], l.formulas.imp)
-  for (j in 1:length(l.formulas.imp)) {
-    p.list[[j]] <- fit.all.cam.models(p.formulas.cam[i], l.formulas.imp[j])
-  }
-  outList.imp.cam[[i]] <- p.list
+for (i in 1:length(pFormulasCam)) {
+  cModels[[i]] <- 
+    fit.cam.null.models(pFormulasCam[i])
 }
 
-modelList.imp.cam <- unlist(outList.imp.cam, recursive = FALSE)
+
+# Make an AIC table to compare camera detection models:
+
+aictab(
+  cand.set = cModels,
+  modnames = names(cModels))
 
 
+# abundance model fitting -------------------------------------------------
 
+# Function that fits transect models with user-supplied covariates:
 
-
-# Fit the models for cameras/demographics
-
-outList.dem.cam <- vector('list', length = length(p.formulas.cam))
-
-for (i in 1:length(p.formulas.cam)) {
-  p.list <- vector('list', length = length(l.formulas.dem))
-  names(p.list) <- paste(p.formulas.cam[i], l.formulas.dem)
-  for (j in 1:length(l.formulas.dem)) {
-    p.list[[j]] <- fit.all.cam.models(p.formulas.cam[i], l.formulas.dem[j])
+fit.trans.abundance.models <-
+  function(formula) {
+    gdistsamp(
+      lambdaformula = formula,
+      phiformula = '~ time',
+      pformula = ~ '~doy + dew',
+      data = gUmfWithCovs,
+      output = 'density',
+      unitsOut = 'ha',
+      keyfun = 'halfnorm',
+      mixture = 'NB'
+    )
   }
-  outList.dem.cam[[i]] <- p.list
+
+# Function that fits camera models with user-supplied covariates:
+
+fit.cam.abundance.models <-
+  function(formula) {
+    pcount(
+      formula = as.formula(paste('~dewHigh', as.character(formula))),
+      data = camUmfWithCovs,
+      mixture = 'NB',
+      K = 50
+    )
+  }
+
+
+# impermeable surface models ----------------------------------------------
+
+# List of model formulas:
+
+formulaList <-
+  c('~ imp',
+    '~ imp + imp2',
+    '~ 1')
+
+# Create an empty list to store the transect models:
+
+tImpModels <- 
+  vector(
+    'list',
+    length = length(formulaList)) %>%
+  setNames(formulaList)
+
+# Fit the transect impermeable models
+
+for (i in 1:length(formulaList)) {
+  tImpModels[[i]] <- 
+    fit.trans.abundance.models(formulaList[i])
 }
 
-modelList.dem.cam <- unlist(outList.dem.cam, recursive = FALSE)
+# Create an AIC table
+
+tImpAICTab <- 
+  aictab(cand.set = tImpModels, modnames=names(tImpModels))
+
+
+# Create an empty list to store the camera models
+
+cImpModels <- 
+  vector(
+    'list', 
+    length = length(formulaList)) %>%
+  setNames(formulaList)
+
+
+# Fit the camera impermeable models
+
+for (i in 1:length(formulaList)) {
+  cImpModels[[i]] <- 
+    fit.cam.abundance.models(formulaList[i])
+}
+
+
+# Create an AIC table
+
+cImpAICTab <- 
+  aictab(cand.set = cImpModels, modnames=names(cImpModels))
 
 
 
+# human demographics models ------------------------------------------------
+
+# List of model formulas
+
+formulaList <-
+  c(
+    '~1',
+    '~hDensity',
+    '~hDensity+hDensity2',
+    '~medianIncome',
+    '~medianIncome+medianIncome2',
+    '~eduHS',
+    '~eduHS+eduHS2',
+    '~medianIncome+eduHS',
+    '~hDensity+medianIncome',
+    '~hDensity+eduHS',
+    '~hDensity+medianIncome+eduHS',
+    '~hDensity+hDensity2+medianIncome',
+    '~hDensity+hDensity2+eduHS',
+    '~hDensity+hDensity2+medianIncome+eduHS',
+    '~medianIncome+medianIncome2+hDensity',
+    '~medianIncome+medianIncome2+eduHS',
+    '~medianIncome+medianIncome2+hDensity+eduHS',
+    '~eduHS+eduHS2+hDensity',
+    '~eduHS+eduHS2+medianIncome',
+    '~eduHS+eduHS2+hDensity+medianIncome',
+    '~hDensity+hDensity2+medianIncome+medianIncome2',
+    '~hDensity+hDensity2+medianIncome+medianIncome2+eduHS',
+    '~hDensity+hDensity2+eduHS+eduHS2',
+    '~hDensity+hDensity2+eduHS+eduHS2+medianIncome',
+    '~medianIncome+medianIncome2+eduHS+eduHS2',
+    '~medianIncome+medianIncome2+eduHS+eduHS2+hDensity',
+    '~medianIncome+medianIncome2+eduHS+eduHS2+hDensity+hDensity2'
+  )
+
+# Create an empty list to store the transect models:
+
+tDemModels <- 
+  vector(
+    'list',
+    length = length(formulaList)) %>%
+  setNames(formulaList)
+
+# Fit the transect impermeable models
+
+for (i in 1:length(formulaList)) {
+  tDemModels[[i]] <- 
+    fit.trans.abundance.models(formulaList[i])
+}
+
+# Create an AIC table
+
+tDemAICTab <- aictab(cand.set = tDemModels, modnames=names(tDemModels))
 
 
-# Make AICc tables
+# Create an empty list to store the camera models
 
-AICtab.imp.trans <- aictab(
-  cand.set = modelList.imp.trans, modnames = names(modelList.imp.trans)
-)
-
-AICtab.dem.trans <- aictab(
-  cand.set = modelList.dem.trans, modnames = names(modelList.dem.trans)
-)
-
-AICtab.imp.cam <- aictab(
-  cand.set = modelList.imp.cam, modnames = names(modelList.imp.cam)
-)
-
-AICtab.dem.cam <- aictab(
-  cand.set = modelList.dem.cam, modnames = names(modelList.dem.cam)
-)
+cDemModels <- 
+  vector(
+    'list', 
+    length = length(formulaList)) %>%
+  setNames(formulaList)
 
 
+# Fit the camera impermeable models
 
-# ---------------------------------------------------------------------------------*
-# ---- Format model results ----
-# ---------------------------------------------------------------------------------*
+for (i in 1:length(formulaList)) {
+  cDemModels[[i]] <- 
+    fit.cam.abundance.models(formulaList[i])
+}
+
+
+# Create an AIC table
+
+cDemAICTab <- 
+  aictab(cand.set = cDemModels, modnames=names(cDemModels))
+
+
+
+# Look at the AIC tables
+
+tImpAICTab
+tDemAICTab
+cImpAICTab
+cDemAICTab
+
+
+
+# examine model-averaged betasand SEs -------------------------------------------
+
+modavgShrink(tImpModels, 'imp', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(tImpModels, 'imp2', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(tImpModels, 'imp2', parm.type = 'lambda')$Uncond.SE
+
+modavgShrink(cImpModels, 'imp', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(cImpModels, 'imp2', parm.type = 'lambda')$Mod.avg.beta
+
+modavgShrink(tDemModels, 'hDensity', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(tDemModels, 'hDensity2', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(tDemModels, 'eduHS', parm.type = 'lambda')$Mod.avg.beta
+
+modavgShrink(cDemModels, 'hDensity', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(cDemModels, 'hDensity2', parm.type = 'lambda')$Mod.avg.beta
+modavgShrink(cDemModels, 'eduHS', parm.type = 'lambda')$Mod.avg.beta
+
+
+
+# weight model prediction at each site ----------------------------------------
 
 # Function to weight predicted abundance at each site by model AICc weights
 
-weightPredictions <- function(modResults, AICTab, method) {
+weight.model.predictions <- 
+  function(modResults, AICTab, method) {
   
-  # Return error for wrong 'method' input
-  if (!method %in% c('transect', 'camera')) {
-    return("method must be either 'transect' or 'camera'")
-  }
-  
-  # Get appropriate site list depending on detection method
-  if (method == 'transect'){
-    sites <- covs %>% select(site)
-  } else {
-    sites <- camCovs %>% select(site)
-  }
-  
-  # Resort AIC table results to match order of modResults
-  unsortAICWt <- AICTab[match(names(modResults), AICTab$Modnames),]$AICcWt
-  
-  # Make empty list to store weighted model predictions
-  weighted <- vector('list', length = length(modResults))
-  names(weighted) <- names(modResults)
-  
-  # Multiply model predictions by their AICc weights
-  for (i in 1:length(modResults)) {
-    weighted[[i]] <- modResults[[i]] * unsortAICWt[i]
-  }
-  
-  # Add up weighted predictions
-  for (i in 1:ncol(weighted[[1]])) {
-    for (j in 2:length(weighted)) {
-      weighted[[1]][i] <- weighted[[1]][i] + weighted[[j]][i]
+    # Return error for wrong 'method' input
+    if (!method %in% c('transect', 'camera')) {
+      return("method must be either 'transect' or 'camera'")
     }
-  }
-  
-  # Set up output dataframe
-  output <- bind_cols(sites, weighted[[1]])
-  colnames(output) <- c('site', 'abund', 'SE', 'lower', 'upper')
-  
-  # Add covariates to output dataframe
-  output <- left_join(output, covs, by = 'site')
-  
-  return(output)
+    
+    # Get appropriate site list depending on detection method
+    if (method == 'transect'){
+      sites <- covs %>% select(site)
+    } else {
+      sites <- camCovs %>% select(site)
+    }
+    
+    # Resort AIC table results to match order of modResults
+    unsortAICWt <- AICTab[match(names(modResults), AICTab$Modnames),]$AICcWt
+    
+    # Make empty list to store weighted model predictions
+    weighted <- vector('list', length = length(modResults))
+    names(weighted) <- names(modResults)
+    
+    # Multiply model predictions by their AICc weights
+    for (i in 1:length(modResults)) {
+      weighted[[i]] <- modResults[[i]] * unsortAICWt[i]
+    }
+    
+    # Add up weighted predictions
+    for (i in 1:ncol(weighted[[1]])) {
+      for (j in 2:length(weighted)) {
+        weighted[[1]][i] <- weighted[[1]][i] + weighted[[j]][i]
+      }
+    }
+    
+    # Set up output dataframe
+    output <- bind_cols(sites, weighted[[1]])
+    colnames(output) <- c('site', 'abund', 'SE', 'lower', 'upper')
+    
+    # Add covariates to output dataframe
+    output <- left_join(output, covs, by = 'site')
+    
+    return(output)
 }
 
 
 # Find predicted abundances for transect models
 
-unweightAbund.imp.trans <- lapply(
-  modelList.imp.trans, predict, type = 'lambda', appenddata = TRUE
-)
+tImpUnweightAbund <- 
+  lapply(
+    tImpModels, 
+    predict, 
+    type = 'lambda', 
+    appenddata = TRUE)
 
-unweightAbund.dem.trans <- lapply(
-  modelList.dem.trans, predict, type = 'lambda', appenddata = TRUE
-)
+tDemUnweightAbund <- 
+  lapply(
+    tDemModels, 
+    predict, 
+    type = 'lambda', 
+    appenddata = TRUE)
 
-unweightAbund.imp.cam <- lapply(
-  modelList.imp.cam, predict, type = 'state', appenddata = TRUE
-)
+cImpUnweightAbund <- 
+  lapply(
+    cImpModels, 
+    predict, 
+    type = 'state', 
+    appenddata = TRUE)
 
-unweightAbund.dem.cam <- lapply(
-  modelList.dem.cam, predict, type = 'state', appenddata = TRUE
-)
+cDemUnweightAbund <- 
+  lapply(
+    cDemModels, 
+    predict, 
+    type = 'state', 
+    appenddata = TRUE)
 
 
 
 # Weight predicted abundance by AIcC weights
 
-weightAbund.imp.trans <- weightPredictions(
-  unweightAbund.imp.trans, AICtab.imp.trans, 'transect'
-)
+tImpWeightAbund <- 
+  weight.model.predictions(
+    tImpUnweightAbund, 
+    tImpAICtab, 
+    'transect')
 
-weightAbund.dem.trans <- weightPredictions(
-  unweightAbund.dem.trans, AICtab.dem.trans, 'transect'
-)
+tDemWeightAbund <- 
+  weight.model.predictions(
+    tDemUnweightAbund, 
+    tDemAICtab, 
+    'transect')
 
-weightAbund.imp.cam <- weightPredictions(
-  unweightAbund.imp.cam, AICtab.imp.cam, 'camera'
-)
+cImpWeightAbund <- 
+  weight.model.predictions(
+    cImpUnweightAbund, 
+    cImpAICtab, 
+    'camera')
 
-weightAbund.dem.cam <- weightPredictions(
-  unweightAbund.dem.cam, AICtab.dem.cam, 'camera'
-)
-
-
-# Write dataframes to CSV
-
-write.csv(weightAbund.imp.trans, 'data/abundImpTrans.csv', row.names = FALSE)
-write.csv(weightAbund.dem.trans, 'data/abundDemTrans.csv', row.names = FALSE)
-write.csv(weightAbund.imp.cam, 'data/abundImpCam.csv', row.names = FALSE)
-write.csv(weightAbund.dem.cam, 'data/abundDemCam.csv', row.names = FALSE)
-
+cDemWeightAbund <- 
+  weight.model.predictions(
+    cDemUnweightAbund, 
+    cDemAICtab, 
+    'camera')
 
 

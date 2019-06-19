@@ -1,74 +1,45 @@
-# Set-up:
-
-# Working directory, Brian office: C:/Users/Brian/Desktop/gits/birdCats
-# Working directory, Kevin's laptop: C:/Users/Kevin/Documents/GitHub/birdCats/birdCats
-
-library(RCurl)
-library(dplyr)
-library(tidyr)
-
-# Read sites for study:
-
-gitURL <- getURL(
-  'https://raw.githubusercontent.com/bsevansunc/birdCats/master/birdCats/catSites.csv'
-)
+library(tidyverse)
 
 # Get sites:
 
-catSites <- read.csv(text = gitURL, stringsAsFactors = FALSE) %>%
-  tbl_df %>%
-  .$site
+catSites <-
+  read_csv('data/catSites.csv') %>%
+  arrange(site) %>%
+  select(site)
 
-# Cat frame with month (1:3) and sample order (1:53, per month):
+# Number of months:
 
+samplingMonths <- 1:3
 
-catFrame <- data.frame(month = rep(1:3, each = length(unique(catSites))),
-           sampleOrder = rep(1:53,  3),
-           site = NA) %>%
-  tbl_df
+# Generate a list based on the number of months:
 
-# Sites for month 1 are a random sample of catSites:
-
-catFrame[1:53,'site'] <- sample(catSites, 53)
-
-# Get vector of the last 14 cat sites in month 1:
-
-endCats1 <- catFrame %>%
-  filter(month == 1, sampleOrder >= 40) %>%
-  .$site
-
-# Generate random sample of sites for first 14 sites in month 2 that does not include endCats1
-
-catFrame[54:67,'site'] <- sample(
-  catSites[!catSites %in% endCats1], 14
+samplingList <-
+  samplingMonths %>%
+  map(function(x){
+      # Cat sites with month number:
+      catSites %>%
+        mutate(month = x) %>%
+        # Random site generation:
+        sample_frac() %>%
+        mutate(
+          sampleOrder = row_number())
+  }
 )
 
-# For remaining sites in month 2, select from vector of sites that do not include the first 14 records of this month:
+# Resample months 2 and 3 such that sites are not visited within 14 sampling periods:
 
-catFrame[68:106,'site'] <- sample(
-  catSites[!catSites %in% catFrame[54:67,]$site], 39 
-)
+for(i in 2:length(samplingList)){
+  samplingList[[i]] <- 
+    samplingList[[i-1]] %>%
+    group_by(sampleOrder >= max(sampleOrder) - 14) %>%
+    sample_frac() %>%
+    ungroup %>%
+    mutate(sampleOrder =  row_number()) %>%
+    select(site:sampleOrder)
+}
 
-# Get vector of the last 14 cat sites in month 2:
+# Write to file:
 
-endCats2 <- catFrame %>%
-  filter(month == 2, sampleOrder >= 40) %>%
-  .$site
-
-# Generate random sample of sites for first 14 sites in month 3 that does not include endCats2
-
-catFrame[107:120,'site'] <- sample(
-  catSites[!catSites %in% endCats2], 14
-)
-
-# For remaining sites in month 3, select from vector of sites that do not include the first 14 records of this month:
-
-catFrame[121:nrow(catFrame),'site'] <- sample(
-  catSites[!catSites %in% catFrame[107:120,]$site], 39 
-)
-
-# Write file:
-
-write.csv(catFrame, 'samplingOrder.csv', row.names = FALSE)
-
-
+# write_csv(
+#   bind_rows(samplingList),
+#   'camplingOrder.csv')

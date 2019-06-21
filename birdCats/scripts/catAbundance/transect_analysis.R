@@ -143,7 +143,7 @@ aictab(distance_mods)
 # impervious surface ------------------------------------------------------
 
 imp_formulas <-
-  c('imp', 'imp + I(imp^2)', '~1')
+  c('~imp', '~imp + I(imp^2)', '~1')
 
 imp_mods <-
   map(

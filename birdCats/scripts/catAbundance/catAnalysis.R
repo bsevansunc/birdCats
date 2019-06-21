@@ -1,6 +1,5 @@
 source('scripts/catAbundance/setup.R')
 
-
 # prepare data for transect analysis --------------------------------------
 
 # Create an unmarked frame of distance data for the transect counts:
@@ -52,8 +51,7 @@ ySiteCovs <-
     doy = transposeCovariate(transDetCovs, 'doy')
   )
 
-
-# Create unmarkedFrameGDS object for gdistsamp
+# Create unmarkedFrameGDS object for gdistsamp:
 
 gUmfWithCovs <-
   unmarkedFrameGDS(

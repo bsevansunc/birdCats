@@ -62,7 +62,7 @@ gUmfWithCovs <-
     unitsIn = 'm'
   )
 
-# fit availability and detection models -----------------------------------
+# distance function -------------------------------------------------------
 
 # Following vignette: https://rstudio-pubs-static.s3.amazonaws.com/221408_23c61679859e48e6bae0b9c5c2e48a92.html
 
@@ -71,97 +71,87 @@ gUmfWithCovs <-
 detection_functions <-
   c('halfnorm', 'hazard', 'exp', 'uniform')
 
-map(
-  detection_functions,
-  function(x){
-    gdistsamp(
-      lambdaformula = '~ 1',
-      phiformula = '~1',
-      pformula = '~1',
-      data = gUmfWithCovs,
-      keyfun = x,
-      mixture = 'NB',
-      K = 50,
-      output = 'abund'
-    )
-  }
-) %>% 
-  set_names(detection_functions) %>%
-  aictab()
+distance_mods <-
+  map(
+    detection_functions,
+    function(x){
+      gdistsamp(
+        lambdaformula = '~ 1',
+        phiformula = '~1',
+        pformula = '~1',
+        data = gUmfWithCovs,
+        keyfun = x,
+        mixture = 'NB',
+        K = 50,
+        output = 'abund'
+      )
+    }
+  ) %>% 
+  set_names(detection_functions) 
+
+aictab(distance_mods)
 
 # Hazard distance function was best supported.
 
-# Determine whether availability (phi) varies by time of day and impervious:
+# availability and detection ----------------------------------------------
 
-availability_functions <-
-  c('~1', '~time', '~I(time^2)')
+# formulas for phi and p parameters:
 
-map(
-  availability_functions,
-  function(x){
-    gdistsamp(
-      lambdaformula = '~ 1',
-      phiformula = x,
-      pformula = '~1',
-      data = gUmfWithCovs,
-      keyfun = 'hazard',
-      mixture = 'NB',
-      K = 50,
-      output = 'abund'
+phiP_formulas <-
+  crossing(
+    phi = c('~1', '~time', '~I(time^2)'),
+    p =  c(
+      '~temp',
+      '~temp + time',
+      '~temp + dew',
+      '~temp + time + dew',
+      '~temp + time + I(time^2) + dew',
+      '~temp*dew + time',
+      '~temp*dew + time + I(time^2)',
+      '~time',
+      '~time + I(time^2)',
+      '~time + dew',
+      '~time + I(time^2) + dew',
+      '~dew',
+      '~1'
     )
-  }
-) %>% 
-  set_names(availability_functions) %>%
-  aictab()
-
-# Determine whether detection varies by date, time, or weather:
-
-detection_functions <-
-  c(
-    '~temp',
-    '~temp + time',
-    '~temp + dew',
-    '~temp + time + dew',
-    '~temp + time + I(time^2) + dew',
-    '~temp*dew + time',
-    '~temp*dew + time + I(time^2)',
-    '~time',
-    '~time + I(time^2)',
-    '~time + dew',
-    '~time + I(time^2) + dew',
-    '~dew',
-    '~1'
   )
 
-map(
-  detection_functions,
-  function(x){
-    gdistsamp(
-      lambdaformula = '~ 1',
-      phiformula = '~1',
-      pformula = x,
-      data = gUmfWithCovs,
-      keyfun = 'hazard',
-      mixture = 'NB',
-      K = 50,
-      output = 'abund'
-    )
-  }
-) %>% 
-  set_names(detection_functions) %>%
-  aictab()
+distance_mods <-
+  map(
+    1:nrow(phiP_formulas),
+    function(x){
+      gdistsamp(
+        lambdaformula = '~ 1',
+        phiformula = phiP_formulas$phi[x],
+        pformula = phiP_formulas$p[x],
+        data = gUmfWithCovs,
+        keyfun = 'hazard',
+        mixture = 'NB',
+        K = 50,
+        output = 'abund'
+      )
+    }
+  ) %>% 
+  set_names(
+    paste(
+      phiP_formulas$phi, 
+      phiP_formulas$p))
 
-# Determine whether abundance varies by impervious surface:
+aictab(distance_mods)
 
-imp_functions <-
+# impervious surface ------------------------------------------------------
+
+imp_formulas <-
   c('imp', 'imp + I(imp^2)', '~1')
 
-map(
-  imp_functions,
+imp_mods <-
+  map(
+  imp_formulas,
   function(x){
     gdistsamp(
       lambdaformula = x,
-      phiformula = '~1',
+      phiformula = '~time',
       pformula = '~1',
       data = gUmfWithCovs,
       keyfun = 'hazard',
@@ -171,8 +161,11 @@ map(
     )
   }
 ) %>% 
-  set_names(detection_functions) %>%
-  aictab()
+  set_names(imp_formulas)
 
 
+aictab(imp_mods)
 
+# Conduct a goodness-of-fit test
+
+Nmix.gof.test(imp_mods[[1]])

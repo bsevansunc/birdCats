@@ -151,57 +151,28 @@ map(
   set_names(detection_functions) %>%
   aictab()
 
+# Determine whether abundance varies by impervious surface:
 
+imp_functions <-
+  c('imp', 'imp + I(imp^2)', '~1')
 
-
-
-# Formulas for availability (phi) and detection(p):
-
-formulas <-
-  crossing(
-    phi = c('~time', '~time + I(time^2)', '~1'),
-    p = c(
-      '~doy + temp',
-      '~doy + time',
-      '~doy + dew',
-      '~doy + time + I(time^2)',
-      '~dew + time',
-      '~dew + temp',
-      '~dew + time + I(time^2)',
-      '~time + temp',
-      '~time + I(time^2) + temp',
-      '~doy',
-      '~time',
-      '~time + I(time^2)',
-      '~dew',
-      '~temp',
-      '~1'
+map(
+  imp_functions,
+  function(x){
+    gdistsamp(
+      lambdaformula = x,
+      phiformula = '~1',
+      pformula = '~1',
+      data = gUmfWithCovs,
+      keyfun = 'hazard',
+      mixture = 'NB',
+      K = 50,
+      output = 'abund'
     )
-  ) %>%
-  arrange(phi, p)
+  }
+) %>% 
+  set_names(detection_functions) %>%
+  aictab()
 
-# Run models:
 
-tModels <-
-  purrr::map(
-    1:nrow(formulas),
-    function(x){
-      gdistsamp(
-        lambdaformula = '~ 1',
-        phiformula = formulas$phi[x],
-        pformula = formulas$p[x],
-        data = gUmfWithCovs,
-        keyfun = 'halfnorm',
-        mixture = 'NB',
-        K = 50,
-        output = 'abund'
-      )
-    }
-  ) %>%
-  set_names(paste(formulas$phi, formulas$p))
 
-# AIC table to compare availability/detectability models:
-
-aictab(
-  cand.set = tModels,
-  modnames = names(tModels))

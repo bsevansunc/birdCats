@@ -83,62 +83,96 @@ distance_mods <-
         keyfun = x,
         mixture = 'NB',
         K = 50,
-        output = 'abund'
-      )
-    }
-  ) %>% 
+        output = 'abund')}) %>% 
   set_names(detection_functions) 
 
 aictab(distance_mods)
 
 # Hazard distance function was best supported.
 
-# availability and detection ----------------------------------------------
+# Starting values for further modeling:
 
-# formulas for phi and p parameters:
+start_values <- 
+  c(1.75, -2.62, 2.84,-.446)
 
-phiP_formulas <-
-  crossing(
-    phi = c('~1', '~time', '~I(time^2)'),
-    p =  c(
-      '~temp',
-      '~temp + time',
-      '~temp + dew',
-      '~temp + time + dew',
-      '~temp + time + I(time^2) + dew',
-      '~temp*dew + time',
-      '~temp*dew + time + I(time^2)',
-      '~time',
-      '~time + I(time^2)',
-      '~time + dew',
-      '~time + I(time^2) + dew',
-      '~dew',
-      '~1'
-    )
-  )
+# evaluate overdispersion -------------------------------------------------
 
-distance_mods <-
+# Create a global model (most complex): 
+
+global_mod <-
+  gdistsamp(
+    lambdaformula = '~ imp + I(imp^2)',
+    phiformula = '~time + doy',
+    pformula = '~temp + dew + time + doy',
+    data = gUmfWithCovs,
+    keyfun = 'hazard',
+    mixture = 'NB',
+    K = 50,
+    output = 'abund',
+    se = FALSE)
+
+# Evaluate overdispersion (c-hat):
+
+Nmix.gof.test(global_mod)
+
+
+# availability ------------------------------------------------------------
+
+phi_formulas <-
+  c('~1', '~time')
+
+phi_mods <-
   map(
-    1:nrow(phiP_formulas),
+    phi_formulas,
     function(x){
       gdistsamp(
         lambdaformula = '~ 1',
-        phiformula = phiP_formulas$phi[x],
-        pformula = phiP_formulas$p[x],
+        phiformula = x,
+        pformula = '~1',
         data = gUmfWithCovs,
         keyfun = 'hazard',
         mixture = 'NB',
         K = 50,
-        output = 'abund'
-      )
-    }
-  ) %>% 
-  set_names(
-    paste(
-      phiP_formulas$phi, 
-      phiP_formulas$p))
+        output = 'abund')}) %>% 
+  set_names(phi_formulas)
 
-aictab(distance_mods)
+aictab(phi_mods)
+
+# detection ---------------------------------------------------------------
+
+p_formulas <-
+  c(
+    '~temp',
+    '~temp + time',
+    '~temp + dew',
+    '~temp + doy',
+    '~temp + time + dew + doy',
+    '~time',
+    '~time + dew',
+    '~time + dew + doy',
+    '~dew',
+    '~dew + doy',
+    '~doy',
+    '~1'
+  )
+
+
+p_mods <-
+  map(
+    p_formulas,
+    function(x){
+      gdistsamp(
+        lambdaformula = '~ 1',
+        phiformula = '~time',
+        pformula = x,
+        data = gUmfWithCovs,
+        keyfun = 'hazard',
+        mixture = 'NB',
+        K = 50,
+        output = 'abund')}) %>% 
+  set_names(p_formulas)
+
+aictab(p_mods)
 
 # impervious surface ------------------------------------------------------
 
@@ -157,15 +191,9 @@ imp_mods <-
       keyfun = 'hazard',
       mixture = 'NB',
       K = 50,
-      output = 'abund'
-    )
-  }
-) %>% 
+      output = 'abund')}) %>% 
   set_names(imp_formulas)
-
 
 aictab(imp_mods)
 
-# Conduct a goodness-of-fit test
 
-Nmix.gof.test(imp_mods[[1]])

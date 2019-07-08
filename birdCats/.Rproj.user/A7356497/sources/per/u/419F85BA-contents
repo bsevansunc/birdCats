@@ -1,0 +1,86 @@
+library(quantmod)
+library(lubidate)
+library(plotly)
+library(tidyverse)
+
+apple <-
+  getSymbols('AAPL', src = 'yahoo', from  = '1992-06-02', to = '2018-12-01', auto.assign = FALSE) %>%
+  as.data.frame() %>%
+  mutate(date = row.names(.)) %>%
+  transmute(
+    stock = 'apple',
+    date = as.Date(date),
+    low = AAPL.Low,
+    high = AAPL.High,
+    mean = (low + high)/2,
+    aPrice = AAPL.Adjusted
+  )
+
+microsoft <-
+  getSymbols('MSFT', src = 'yahoo', from  = '1992-06-02', to = '2018-12-01', auto.assign = FALSE) %>%
+  as.data.frame() %>%
+  as_tibble() %>%
+  mutate(date = row.names(.)) %>%
+  transmute(
+    stock = 'microsoft',
+    date = as.Date(date),
+    low = MSFT.Low,
+    high = MSFT.High,
+    mean = (low + high)/2,
+    aPrice = MSFT.Adjusted
+  ) 
+
+intel <-
+  getSymbols('INTC', src = 'yahoo', from  = '1992-06-02', to = '2018-12-01', auto.assign = FALSE) %>%
+  as.data.frame() %>%
+  as_tibble() %>%
+  mutate(date = row.names(.)) %>%
+  transmute(
+    stock = 'intel',
+    date = as.Date(date),
+    low = INTC.Low,
+    high = INTC.High,
+    mean = (low + high)/2,
+    aPrice = INTC.Adjusted
+  ) 
+
+amazon <-
+  getSymbols('AMZN', src = 'yahoo', from  = '1997-05-16', to = '2018-12-01', auto.assign = FALSE) %>%
+  as.data.frame() %>%
+  as_tibble() %>%
+  mutate(date = row.names(.)) %>%
+  transmute(
+    stock = 'amazon',
+    date = as.Date(date),
+    low = AMZN.Low,
+    high = AMZN.High,
+    mean = (low + high)/2,
+    aPrice = AMZN.Adjusted
+  )
+
+
+stocks <-
+  bind_rows(apple, microsoft, amazon, intel)
+
+
+stocks %>%
+  group_by(stock) %>%
+  filter(year(date) %in% 1992, month(date) == 7) #, month(date) %in% 8:9, day(date) %in% 15:25)
+
+stocks %>%
+  filter(
+    year(date) == 1992,
+    stock == 'intel',
+    aPrice == min(aPrice))
+
+
+  
+stocks %>%
+  filter(year(date) %in% 2001:2019) %>%
+  # filter(between(date, as.Date('2000-01-01'), as.Date('2000-01-31'))) %>%
+  # filter(year(date) %in% 1994, month(date) %in% 6) %>%#, month(date) %in% 8:9, day(date) %in% 15:25)
+  group_by(stock) %>%
+  mutate(aPrice = aPrice/max(aPrice)) %>%
+  # filter(aPrice == 1)
+  ggplot(aes(x = date, y = aPrice, color = stock)) + geom_line()
+  

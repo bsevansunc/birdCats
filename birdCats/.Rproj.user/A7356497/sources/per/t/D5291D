@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561145859895.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1285846754",
+    "id" : "D5291D",
+    "lastKnownWriteTime" : 1561381226,
+    "last_content_update" : 1561381226535,
+    "path" : "C:/Users/Guest user/gits/birdCats/birdCats/scripts/catAbundance/transect_analysis.R",
+    "project_path" : "scripts/catAbundance/transect_analysis.R",
+    "properties" : {
+        "cursorPosition" : "147,18",
+        "scrollLine" : "124"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -26,18 +26,18 @@ transCovs <-
 
 # Create a dataframe of potential cat detection covariates by site:
 
+yCov_names <- 
+  c('time', 'temp','dew', 'doy')
+
 transDetCovs <- 
   catTransect %>%
   select(-c(species:date)) %>%
   distinct %>%
   mutate_at(
-    c('time', 'temp', 'dew', 'doy'),
+    yCov_names,
     scaleVar)
 
 # Create a list of wide-form detection covariates:
-
-yCov_names <- 
-  c('time', 'temp','dew', 'doy')
 
 ySiteCovs <-
   map(
@@ -92,8 +92,8 @@ aictab(distance_mods)
 
 # Starting values for further modeling:
 
-start_values <- 
-  c(1.75, -2.62, 2.84,-.446)
+# start_values <- 
+#   c(1.75, -2.62, 2.84,-.446)
 
 # evaluate overdispersion -------------------------------------------------
 
@@ -105,11 +105,10 @@ global_mod <-
     phiformula = '~time + doy',
     pformula = '~temp + dew + time + doy',
     data = gUmfWithCovs,
-    keyfun = 'hazard',
+    keyfun = 'halfnorm',
     mixture = 'NB',
     K = 50,
-    output = 'abund',
-    se = FALSE)
+    output = 'abund')
 
 # Evaluate overdispersion (c-hat):
 
@@ -119,7 +118,7 @@ Nmix.gof.test(global_mod)
 # availability ------------------------------------------------------------
 
 phi_formulas <-
-  c('~1', '~time')
+  c('~1', '~time', '~doy', '~time + doy')
 
 phi_mods <-
   map(
@@ -138,7 +137,7 @@ phi_mods <-
 
 aictab(phi_mods)
 
-# detection ---------------------------------------------------------------
+# detectability -----------------------------------------------------------
 
 p_formulas <-
   c(
@@ -156,7 +155,6 @@ p_formulas <-
     '~1'
   )
 
-
 p_mods <-
   map(
     p_formulas,
@@ -173,6 +171,54 @@ p_mods <-
   set_names(p_formulas)
 
 aictab(p_mods)
+
+# availability and detectability ------------------------------------------
+
+phi_formulas <-
+  c('~1', '~time')
+
+p_formulas <-
+  c(
+    '~temp',
+    '~temp + time',
+    '~temp + dew',
+    '~temp + time + dew',
+    # '~temp + doy',
+    # '~temp + time + dew + doy',
+    '~time',
+    '~time + dew',
+    # '~time + dew + doy',
+    '~dew',
+    # '~dew + doy',
+    # '~doy',
+    '~1'
+  )
+
+formula_frame <-
+  crossing(phi_formulas, p_formulas)
+
+phiP_mods <-
+  map(
+    1:nrow(formula_frame),
+    function(x){
+        gdistsamp(
+          lambdaformula = '~ 1',
+          phiformula = formula_frame[x, 'phi_formulas'],
+          pformula = formula_frame[x, 'p_formulas'],
+          data = gUmfWithCovs,
+          keyfun = 'hazard',
+          mixture = 'NB',
+          K = 50,
+          output = 'abund')
+        }) %>% 
+  set_names(
+    str_c(
+      formula_frame$phi_formulas,
+      formula_frame$p_formulas,
+      sep = ' '
+  ))
+
+aictab(phiP_mods)
 
 # impervious surface ------------------------------------------------------
 
@@ -196,4 +242,114 @@ imp_mods <-
 
 aictab(imp_mods)
 
+# human demography --------------------------------------------------------
+
+hDem_vars <-
+  c('medianIncome', 'hDensity', 'age', 'marred', 'eduHS')
+
+hDem_formulas <-
+  c(
+    '~1',
+    # One variable:
+    '~medianIncome',
+    '~hDensity',
+    '~age',
+    '~marred',
+    '~eduHS',
+    # Two variables:
+    '~medianIncome + hDensity',
+    '~medianIncome + age',
+    '~medianIncome + marred',
+    '~medianIncome + eduHS',
+    '~hDensity + age',
+    '~hDensity + marred',
+    '~hDensity + eduHS',
+    '~age + marred',
+    '~age + eduHS',
+    '~marred + eduHS',
+    # Three variables:
+    '~medianIncome + hDensity + age',
+    '~medianIncome + hDensity + marred',
+    '~medianIncome + hDensity + eduHS',
+    '~medianIncome + age + marred',
+    '~medianIncome + age + eduHS',
+    '~medianIncome + marred + eduHS',
+    '~hDensity + age + marred',
+    '~hDensity + age + eduHS',
+    '~hDensity + marred + eduHS',
+    '~age + marred + eduHS',
+    # Four variables:
+    '~medianIncome + hDensity + age + marred',
+    '~medianIncome + hDensity + age + eduHS',
+    '~hDensity + age + marred + eduHS',
+    # Five variables:
+    '~medianIncome + hDensity + age + marred + eduHS',
+    # With quadratic hDensity, 1 variable:
+    '~hDensity + I(hDensity^2)',
+    # With quadratic hDensity, 2 variables:
+    '~medianIncome + hDensity + I(hDensity^2)',
+    '~hDensity + I(hDensity^2) + age',
+    '~hDensity + I(hDensity^2) + marred',
+    '~hDensity + I(hDensity^2) + eduHS',
+    # With quadratic hDensity, 3 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age',
+    '~medianIncome + hDensity + I(hDensity^2) + marred',
+    '~medianIncome + hDensity + I(hDensity^2) + eduHS',
+    '~hDensity + I(hDensity^2) + age + marred',
+    '~hDensity + I(hDensity^2) + age + eduHS',
+    '~hDensity + I(hDensity^2) + marred + eduHS',
+    # With quadratic hDensity, 4 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age + marred',
+    '~medianIncome + hDensity + I(hDensity^2) + age + eduHS',
+    '~hDensity + I(hDensity^2) + age + marred + eduHS',
+    # With quadratic hDensity, 5 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age + marred + eduHS',
+    # With quadratic income, 1 variable:
+    '~medianIncome + I(medianIncome^2)',
+    # With quadratic income, 2 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity',
+    '~medianIncome + I(medianIncome^2) + age',
+    '~medianIncome + I(medianIncome^2) + marred',
+    '~medianIncome + I(medianIncome^2) + eduHS',
+    # With quadratic income, 3 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + age',
+    '~medianIncome + I(medianIncome^2) + hDensity + marred',
+    '~medianIncome + I(medianIncome^2) + hDensity + eduHS',
+    '~medianIncome + I(medianIncome^2) + age + marred',
+    '~medianIncome + I(medianIncome^2) + age + eduHS',
+    '~medianIncome + I(medianIncome^2) + marred + eduHS',
+    # With quadratic income, 4 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + age + marred',
+    '~medianIncome + I(medianIncome^2) + hDensity + age + eduHS',
+    # With quadratic income, 5 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + age + marred + eduHS',
+    # Quadratic income and hDensity, 2 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2)',
+    # Quadratic income and hDensity, 3 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + age',
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + marred',
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + eduHS',
+    # Quadratic income and hDensity, 4 variables:
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + age + marred',
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + age + eduHS',
+    # Quadratic income and hDensity, 5 variables (global mod):
+    '~medianIncome + I(medianIncome^2) + hDensity + I(hDensity^2) + age + marred + eduHS'
+    )
+
+hDem_mods <-
+  map(
+    hDem_formulas,
+    function(x){
+      gdistsamp(
+        lambdaformula = x,
+        phiformula = '~time',
+        pformula = '~1',
+        data = gUmfWithCovs,
+        keyfun = 'hazard',
+        mixture = 'NB',
+        K = 50,
+        output = 'abund')}) %>% 
+  set_names(hDem_formulas)
+
+aictab(hDem_mods)
 

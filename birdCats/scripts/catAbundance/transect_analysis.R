@@ -62,31 +62,97 @@ gUmfWithCovs <-
     unitsIn = 'm'
   )
 
-# distance function -------------------------------------------------------
+# probability density function -------------------------------------------------------
 
 # Following vignette: https://rstudio-pubs-static.s3.amazonaws.com/221408_23c61679859e48e6bae0b9c5c2e48a92.html
 
 # Determine which distance function best describes how counts vary by distance:
 
 detection_functions <-
-  c('halfnorm', 'hazard', 'exp', 'uniform')
+  c('halfnorm', 'hazard')
 
-distance_mods <-
+phi_formulas <- '~1'
+p_formulas <- '~1'
+
+formula_frame <-
+  crossing(detection_functions, phi_formulas, p_formulas)
+
+detection_mods <-
   map(
-    detection_functions,
+    1:nrow(formula_frame),
     function(x){
       gdistsamp(
         lambdaformula = '~ 1',
-        phiformula = '~1',
-        pformula = '~1',
+        phiformula = formula_frame[x,]$phi_formulas,
+        pformula = formula_frame[x,]$p_formulas,
         data = gUmfWithCovs,
-        keyfun = x,
+        keyfun = formula_frame[x,]$detection_functions,
         mixture = 'NB',
         K = 50,
-        output = 'abund')}) %>% 
-  set_names(detection_functions) 
+        output = 'abund')
+    }) %>%
+  set_names(detection_functions)
 
-aictab(distance_mods)
+aictab(detection_mods)
+
+# availability and detection functions ------------------------------------
+
+detection_functions <- 'hazard'
+
+phi_formulas <-
+  c('~1',
+    '~time',
+    '~doy',
+    '~time + doy',
+    '~time + I(time^2)',
+    '~doy + I(doy^2)'
+  )
+
+p_formulas <-
+  c(
+    '~1',
+    '~temp',
+    # '~time',
+    '~dew',
+    # '~temp + time',
+    '~temp + dew',
+    # '~time + dew',
+    # '~temp + time + dew',
+    # '~time + I(time^2)',
+    # '~temp + time + I(time^2)',
+    # '~time + I(time^2) + dew',
+    # '~temp + I(time^2) + time + dew'
+  )
+
+formula_frame <-
+  crossing(detection_functions, phi_formulas, p_formulas)
+
+phi_p_mods <-
+  map(
+    1:nrow(formula_frame),
+    function(x){
+      gdistsamp(
+        lambdaformula = '~ 1',
+        phiformula = formula_frame[x,]$phi_formulas,
+        pformula = formula_frame[x,]$p_formulas,
+        data = gUmfWithCovs,
+        keyfun = formula_frame[x,]$detection_functions,
+        mixture = 'NB',
+        K = 50,
+        output = 'abund')
+      })
+
+test4 <-
+  phi_p_mods %>%
+  set_names(
+  str_c(
+    formula_frame$detection_functions,
+    formula_frame$phi_formulas,
+    formula_frame$p_formulas,
+    sep = ' '
+  ))
+
+aictab(test4)
 
 # Hazard distance function was best supported.
 
@@ -118,7 +184,27 @@ Nmix.gof.test(global_mod)
 # availability ------------------------------------------------------------
 
 phi_formulas <-
-  c('~1', '~time', '~doy', '~time + doy')
+  c('~1',
+    # 1 variable:
+    '~temp',
+    '~time',
+    '~dew',
+    '~doy',
+    # 2 variables:
+    '~temp + time',
+    '~temp + dew',
+    '~temp + doy',
+    '~time + dew',
+    '~time + doy',
+    '~dew + doy',
+    # 3 variables:
+    '~temp + time + dew',
+    '~temp + time + doy',
+    '~temp + dew + doy',
+    '~time + dew + doy',
+    # 4 variables:
+    '~temp + time + dew + doy'
+  )
 
 phi_mods <-
   map(
@@ -244,9 +330,6 @@ aictab(imp_mods)
 
 # human demography --------------------------------------------------------
 
-hDem_vars <-
-  c('medianIncome', 'hDensity', 'age', 'marred', 'eduHS')
-
 hDem_formulas <-
   c(
     '~1',
@@ -352,4 +435,100 @@ hDem_mods <-
   set_names(hDem_formulas)
 
 aictab(hDem_mods)
+
+# Compare models with quadratic housing density term vs. linear only:
+
+data.frame(aictab(hDem_mods)) %>% 
+  as_tibble() %>%
+  mutate(
+    mods = case_when(
+      str_detect(Modnames, 'hDensity') &
+        !str_detect(Modnames, 'hDensity\\^2') ~ 'hDensity',
+      str_detect(Modnames, 'hDensity\\^2') ~ 'hDensity2',
+    TRUE ~ 'other'
+    )) %>%
+  group_by(mods) %>%
+  summarize(cumWt = sum(AICcWt))
+
+# Compare models with quadratic income term vs. linear only:
+
+data.frame(aictab(hDem_mods)) %>% 
+  as_tibble() %>%
+  mutate(
+    mods = case_when(
+      str_detect(Modnames, 'medianIncome') &
+        !str_detect(Modnames, 'medianIncome\\^2') ~ 'medianIncome',
+      str_detect(Modnames, 'medianIncome\\^2') ~ 'medianIncome2',
+      TRUE ~ 'other'
+    )) %>%
+  group_by(mods) %>%
+  summarize(cumWt = sum(AICcWt))
+
+
+# human demographics, reduced ---------------------------------------------
+
+hDem_formulas_reduced <-
+  c(
+    '~1',
+    # One variable:
+    '~medianIncome',
+    '~age',
+    '~marred',
+    '~eduHS',
+    # Two variables:
+    '~medianIncome + age',
+    '~medianIncome + marred',
+    '~medianIncome + eduHS',
+    '~age + marred',
+    '~age + eduHS',
+    '~marred + eduHS',
+    # Three variables:
+    '~medianIncome + age + marred',
+    '~medianIncome + age + eduHS',
+    '~medianIncome + marred + eduHS',
+    '~age + marred + eduHS',
+    # With quadratic hDensity, 1 variable:
+    '~hDensity + I(hDensity^2)',
+    # With quadratic hDensity, 2 variables:
+    '~medianIncome + hDensity + I(hDensity^2)',
+    '~hDensity + I(hDensity^2) + age',
+    '~hDensity + I(hDensity^2) + marred',
+    '~hDensity + I(hDensity^2) + eduHS',
+    # With quadratic hDensity, 3 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age',
+    '~medianIncome + hDensity + I(hDensity^2) + marred',
+    '~medianIncome + hDensity + I(hDensity^2) + eduHS',
+    '~hDensity + I(hDensity^2) + age + marred',
+    '~hDensity + I(hDensity^2) + age + eduHS',
+    '~hDensity + I(hDensity^2) + marred + eduHS',
+    # With quadratic hDensity, 4 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age + marred',
+    '~medianIncome + hDensity + I(hDensity^2) + age + eduHS',
+    '~hDensity + I(hDensity^2) + age + marred + eduHS',
+    # With quadratic hDensity, 5 variables:
+    '~medianIncome + hDensity + I(hDensity^2) + age + marred + eduHS'
+  )
+
+hDem_mods_reduced <-
+  map(
+    hDem_formulas_reduced,
+    function(x){
+      gdistsamp(
+        lambdaformula = x,
+        phiformula = '~time',
+        pformula = '~1',
+        data = gUmfWithCovs,
+        keyfun = 'hazard',
+        mixture = 'NB',
+        K = 50,
+        output = 'abund')}) %>% 
+  set_names(hDem_formulas_reduced)
+
+    
+aictab(hDem_mods_reduced)
+  
+  
+
+
+
 

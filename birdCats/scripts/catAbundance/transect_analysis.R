@@ -95,6 +95,8 @@ detection_mods <-
 
 aictab(detection_mods)
 
+# Hazard distance function was best supported.
+
 # availability and detection functions ------------------------------------
 
 detection_functions <- 'hazard'
@@ -112,16 +114,16 @@ p_formulas <-
   c(
     '~1',
     '~temp',
-    # '~time',
+    '~time',
     '~dew',
-    # '~temp + time',
+    '~temp + time',
     '~temp + dew',
-    # '~time + dew',
-    # '~temp + time + dew',
-    # '~time + I(time^2)',
-    # '~temp + time + I(time^2)',
-    # '~time + I(time^2) + dew',
-    # '~temp + I(time^2) + time + dew'
+    '~time + dew',
+    '~temp + time + dew',
+    '~time + I(time^2)',
+    '~temp + time + I(time^2)',
+    '~time + I(time^2) + dew',
+    '~temp + I(time^2) + time + dew'
   )
 
 formula_frame <-
@@ -140,36 +142,27 @@ phi_p_mods <-
         mixture = 'NB',
         K = 50,
         output = 'abund')
-      })
-
-test4 <-
-  phi_p_mods %>%
+      }) %>%
   set_names(
-  str_c(
-    formula_frame$detection_functions,
-    formula_frame$phi_formulas,
-    formula_frame$p_formulas,
-    sep = ' '
-  ))
+    str_c(
+      formula_frame$detection_functions,
+      formula_frame$phi_formulas,
+      formula_frame$p_formulas,
+      sep = ' '
+    ))
 
-aictab(test4)
 
-# Hazard distance function was best supported.
-
-# Starting values for further modeling:
-
-# start_values <- 
-#   c(1.75, -2.62, 2.84,-.446)
+aictab(phi_p_mods)
 
 # evaluate overdispersion -------------------------------------------------
 
-# Create a global model (most complex): 
+# Create a global model (most complex ... for abundance parameter): 
 
 global_mod <-
   gdistsamp(
     lambdaformula = '~ imp + I(imp^2)',
-    phiformula = '~time + doy',
-    pformula = '~temp + dew + time + doy',
+    phiformula = '~doy + I(doy^2)',
+    pformula = '~1',
     data = gUmfWithCovs,
     keyfun = 'halfnorm',
     mixture = 'NB',
@@ -179,7 +172,6 @@ global_mod <-
 # Evaluate overdispersion (c-hat):
 
 Nmix.gof.test(global_mod)
-
 
 # availability ------------------------------------------------------------
 

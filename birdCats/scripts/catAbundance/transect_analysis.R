@@ -151,8 +151,9 @@ phi_p_mods <-
       sep = ' '
     ))
 
-
-aictab(phi_p_mods)
+as_tibble(aictab(phi_p_mods)) %>%
+  mutate(cWt = cumsum(AICcWt)) %>%
+  filter(cWt <= .9)
 
 # evaluate overdispersion -------------------------------------------------
 
@@ -164,7 +165,7 @@ global_mod <-
     phiformula = '~doy + I(doy^2)',
     pformula = '~1',
     data = gUmfWithCovs,
-    keyfun = 'halfnorm',
+    keyfun = 'hazard',
     mixture = 'NB',
     K = 50,
     output = 'abund')
@@ -172,131 +173,6 @@ global_mod <-
 # Evaluate overdispersion (c-hat):
 
 Nmix.gof.test(global_mod)
-
-# availability ------------------------------------------------------------
-
-phi_formulas <-
-  c('~1',
-    # 1 variable:
-    '~temp',
-    '~time',
-    '~dew',
-    '~doy',
-    # 2 variables:
-    '~temp + time',
-    '~temp + dew',
-    '~temp + doy',
-    '~time + dew',
-    '~time + doy',
-    '~dew + doy',
-    # 3 variables:
-    '~temp + time + dew',
-    '~temp + time + doy',
-    '~temp + dew + doy',
-    '~time + dew + doy',
-    # 4 variables:
-    '~temp + time + dew + doy'
-  )
-
-phi_mods <-
-  map(
-    phi_formulas,
-    function(x){
-      gdistsamp(
-        lambdaformula = '~ 1',
-        phiformula = x,
-        pformula = '~1',
-        data = gUmfWithCovs,
-        keyfun = 'hazard',
-        mixture = 'NB',
-        K = 50,
-        output = 'abund')}) %>% 
-  set_names(phi_formulas)
-
-aictab(phi_mods)
-
-# detectability -----------------------------------------------------------
-
-p_formulas <-
-  c(
-    '~temp',
-    '~temp + time',
-    '~temp + dew',
-    '~temp + doy',
-    '~temp + time + dew + doy',
-    '~time',
-    '~time + dew',
-    '~time + dew + doy',
-    '~dew',
-    '~dew + doy',
-    '~doy',
-    '~1'
-  )
-
-p_mods <-
-  map(
-    p_formulas,
-    function(x){
-      gdistsamp(
-        lambdaformula = '~ 1',
-        phiformula = '~time',
-        pformula = x,
-        data = gUmfWithCovs,
-        keyfun = 'hazard',
-        mixture = 'NB',
-        K = 50,
-        output = 'abund')}) %>% 
-  set_names(p_formulas)
-
-aictab(p_mods)
-
-# availability and detectability ------------------------------------------
-
-phi_formulas <-
-  c('~1', '~time')
-
-p_formulas <-
-  c(
-    '~temp',
-    '~temp + time',
-    '~temp + dew',
-    '~temp + time + dew',
-    # '~temp + doy',
-    # '~temp + time + dew + doy',
-    '~time',
-    '~time + dew',
-    # '~time + dew + doy',
-    '~dew',
-    # '~dew + doy',
-    # '~doy',
-    '~1'
-  )
-
-formula_frame <-
-  crossing(phi_formulas, p_formulas)
-
-phiP_mods <-
-  map(
-    1:nrow(formula_frame),
-    function(x){
-        gdistsamp(
-          lambdaformula = '~ 1',
-          phiformula = formula_frame[x, 'phi_formulas'],
-          pformula = formula_frame[x, 'p_formulas'],
-          data = gUmfWithCovs,
-          keyfun = 'hazard',
-          mixture = 'NB',
-          K = 50,
-          output = 'abund')
-        }) %>% 
-  set_names(
-    str_c(
-      formula_frame$phi_formulas,
-      formula_frame$p_formulas,
-      sep = ' '
-  ))
-
-aictab(phiP_mods)
 
 # impervious surface ------------------------------------------------------
 
@@ -309,7 +185,7 @@ imp_mods <-
   function(x){
     gdistsamp(
       lambdaformula = x,
-      phiformula = '~time',
+      phiformula = '~doy + I(doy^2)',
       pformula = '~1',
       data = gUmfWithCovs,
       keyfun = 'hazard',
@@ -456,7 +332,6 @@ data.frame(aictab(hDem_mods)) %>%
   group_by(mods) %>%
   summarize(cumWt = sum(AICcWt))
 
-
 # human demographics, reduced ---------------------------------------------
 
 hDem_formulas_reduced <-
@@ -516,7 +391,6 @@ hDem_mods_reduced <-
         output = 'abund')}) %>% 
   set_names(hDem_formulas_reduced)
 
-    
 aictab(hDem_mods_reduced)
   
   
